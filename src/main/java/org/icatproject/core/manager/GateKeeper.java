@@ -23,6 +23,8 @@ import java.util.regex.Pattern;
 import javax.annotation.PostConstruct;
 import javax.annotation.PreDestroy;
 import javax.ejb.EJB;
+import javax.ejb.Lock;
+import javax.ejb.LockType;
 import javax.ejb.Singleton;
 import javax.ejb.Startup;
 import javax.jms.JMSException;
@@ -164,6 +166,7 @@ public class GateKeeper {
 		return publicTables;
 	}
 
+	@Lock(LockType.READ)
 	public List<EntityBaseBean> getReadable(String userId, List<EntityBaseBean> beans, EntityManager manager) {
 
 		if (beans.size() == 0) {
@@ -245,6 +248,7 @@ public class GateKeeper {
 		return results;
 	}
 
+	@Lock(LockType.READ)
 	public Set<String> getRootUserNames() {
 		return rootUserNames;
 	}
@@ -269,6 +273,7 @@ public class GateKeeper {
 	/**
 	 * Is the operation allowed
 	 */
+	@Lock(LockType.READ)
 	public boolean isAccessAllowed(String user, EntityBaseBean object, AccessType access, EntityManager manager) {
 
 		Class<? extends EntityBaseBean> objectClass = object.getClass();
@@ -348,6 +353,7 @@ public class GateKeeper {
 	 * 
 	 * @throws IcatException
 	 */
+	@Lock(LockType.READ)
 	public void performAuthorisation(String user, EntityBaseBean object, AccessType access, EntityManager manager)
 			throws IcatException {
 

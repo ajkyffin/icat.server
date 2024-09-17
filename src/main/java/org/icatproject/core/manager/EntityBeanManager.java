@@ -1390,7 +1390,7 @@ public class EntityBeanManager {
 	 */
 	private void logSearch(String userName, String ip, long startMillis, List<ScoredEntityBaseBean> results,
 			String operation) {
-		if (logRequests.contains("R")) {
+		if (logRequests.contains(CallType.READ)) {
 			ByteArrayOutputStream baos = new ByteArrayOutputStream();
 			try (JsonGenerator gen = Json.createGenerator(baos).writeStartObject()) {
 				gen.write("userName", userName);

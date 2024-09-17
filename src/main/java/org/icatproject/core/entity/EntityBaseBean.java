@@ -5,7 +5,6 @@ import java.io.PrintStream;
 import java.io.Serializable;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
-import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.Date;
 import java.util.List;
@@ -107,7 +106,7 @@ public abstract class EntityBaseBean implements HasEntityId, Serializable {
 
 	@SuppressWarnings("unchecked")
 	private List<EntityBaseBean> allowedMany(Step step, Map<Field, Method> getters, GateKeeper gateKeeper, String userId)
-			throws IllegalAccessException, IllegalArgumentException, InvocationTargetException, IcatException {
+			throws IcatException, ReflectiveOperationException {
 		Field field = step.getRelationship().getField();
 		List<EntityBaseBean> beans = (List<EntityBaseBean>) getters.get(field).invoke(this);
 		if (step.isAllowed()) {
@@ -118,7 +117,7 @@ public abstract class EntityBaseBean implements HasEntityId, Serializable {
 	}
 
 	private EntityBaseBean allowedOne(Relationship r, Method method, GateKeeper gateKeeper, String userId)
-			throws IllegalAccessException, IllegalArgumentException, InvocationTargetException, IcatException {
+			throws IcatException, ReflectiveOperationException {
 		EntityBaseBean bean = (EntityBaseBean) method.invoke(this);
 
 		if (bean != null && !gateKeeper.allowed(r)) {

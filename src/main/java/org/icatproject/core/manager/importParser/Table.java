@@ -67,8 +67,8 @@ public class Table {
 
 	public EntityBaseBean createEntity() throws IcatException {
 		try {
-			return tableClass.newInstance();
-		} catch (IllegalAccessException | InstantiationException e) {
+			return tableClass.getDeclaredConstructor().newInstance();
+		} catch (ReflectiveOperationException e) {
 			throw new IcatException(IcatExceptionType.INTERNAL, e.getClass() + " " + e.getMessage());
 		}
 	}

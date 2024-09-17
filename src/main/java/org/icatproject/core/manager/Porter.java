@@ -6,7 +6,6 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.lang.reflect.Field;
-import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.text.DateFormat;
 import java.text.ParseException;
@@ -248,7 +247,7 @@ public class Porter {
 		} catch (LexerException | ParserException e) {
 			throw new IcatException(IcatException.IcatExceptionType.BAD_PARAMETER, e.getMessage() + " at line " + linum,
 					linum);
-		} catch (IllegalArgumentException | InvocationTargetException | IllegalAccessException e) {
+		} catch (ReflectiveOperationException e) {
 			throw new IcatException(IcatException.IcatExceptionType.INTERNAL,
 					e.getClass().getSimpleName() + " " + e.getMessage() + " at line " + linum, linum);
 		}
@@ -256,9 +255,8 @@ public class Porter {
 
 	private void processTuple(Table table, String line, String userId, Map<String, EntityBaseBean> cache,
 			Map<String, Long> ids, LinkedHashMap<Long, EntityBaseBean> idCache, EntityManager entityManager,
-			DuplicateAction duplicateAction, Attributes attributes, boolean allAttributes, String ip) throws
-			IcatException, LexerException, ParserException, IllegalArgumentException, InvocationTargetException,
-			IllegalAccessException {
+			DuplicateAction duplicateAction, Attributes attributes, boolean allAttributes, String ip)
+			throws IcatException, LexerException, ParserException, ReflectiveOperationException {
 		logger.debug("Requested add " + line + " to " + table.getName());
 		Input input = new Input(Tokenizer.getTokens(line));
 		List<TableField> tableFields = table.getTableFields();

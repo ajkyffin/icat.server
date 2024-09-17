@@ -6,7 +6,6 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.StringReader;
 import java.lang.reflect.Field;
-import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.math.BigDecimal;
 import java.math.BigInteger;
@@ -287,8 +286,8 @@ public class ICATRest {
 
 		EntityBaseBean bean = null;
 		try {
-			bean = klass.newInstance();
-		} catch (InstantiationException | IllegalAccessException e) {
+			bean = klass.getDeclaredConstructor().newInstance();
+		} catch (ReflectiveOperationException e) {
 			throw new IcatException(IcatExceptionType.INTERNAL, "failed to instantiate " + beanName, offset);
 		}
 
@@ -713,7 +712,7 @@ public class ICATRest {
 			Object value = null;
 			try {
 				value = getters.get(field).invoke(bean);
-			} catch (IllegalAccessException | IllegalArgumentException | InvocationTargetException e) {
+			} catch (ReflectiveOperationException e) {
 				throw new IcatException(IcatExceptionType.INTERNAL, e.getClass() + " " + e.getMessage());
 			}
 			if (value == null) {

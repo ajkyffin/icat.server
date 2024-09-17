@@ -6,7 +6,6 @@ import java.io.IOException;
 import java.io.OutputStream;
 import java.io.PrintStream;
 import java.lang.reflect.Field;
-import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.math.BigDecimal;
 import java.text.DateFormat;
@@ -171,7 +170,7 @@ public class EntityBeanManager {
 	private String key;
 
 	private String buildKey(EntityBaseBean bean, Map<String, Map<Long, String>> exportCaches)
-			throws IcatException, IllegalAccessException, IllegalArgumentException, InvocationTargetException {
+			throws IcatException, ReflectiveOperationException {
 		Class<? extends EntityBaseBean> klass = bean.getClass();
 		List<Field> constraintFields = EntityInfoHandler.getConstraintFields(klass);
 		if (constraintFields.isEmpty()) {
@@ -669,8 +668,7 @@ public class EntityBeanManager {
 	@SuppressWarnings("unchecked")
 	private void exportBean(EntityBaseBean bean, OutputStream output, boolean qcolumn, boolean all, List<Field> fields,
 			Set<Field> updaters, Map<String, Map<Long, String>> exportCaches, Map<Field, Method> getters,
-			Map<String, Field> fieldMap, Set<Field> atts) throws IOException, IllegalAccessException,
-			IllegalArgumentException, InvocationTargetException, IcatException {
+			Map<String, Field> fieldMap, Set<Field> atts) throws IOException, IcatException, ReflectiveOperationException {
 		boolean first = true;
 		if (qcolumn) {
 			output.write(('"' + bean.getId().toString() + '"').getBytes());
@@ -731,8 +729,8 @@ public class EntityBeanManager {
 	 * table
 	 */
 	private void exportTable(String beanName, Set<Long> ids, OutputStream output,
-			Map<String, Map<Long, String>> exportCaches, boolean allAttributes, String userId) throws IcatException,
-			IOException, IllegalAccessException, IllegalArgumentException, InvocationTargetException {
+			Map<String, Map<Long, String>> exportCaches, boolean allAttributes, String userId)
+			throws IOException, IcatException, ReflectiveOperationException {
 		logger.debug("Export " + (ids == null ? "complete" : "partial") + " " + beanName);
 		Class<? extends EntityBaseBean> klass = EntityInfoHandler.getClass(beanName);
 		output.write((linesep).getBytes());
@@ -1138,15 +1136,8 @@ public class EntityBeanManager {
 		Object value;
 		try {
 			value = getters.get(f).invoke(bean);
-		} catch (IllegalArgumentException e) {
-			throw new IcatException(IcatException.IcatExceptionType.INTERNAL,
-					"IllegalArgumentException " + e.getMessage());
-		} catch (IllegalAccessException e) {
-			throw new IcatException(IcatException.IcatExceptionType.INTERNAL,
-					"IllegalAccessException " + e.getMessage());
-		} catch (InvocationTargetException e) {
-			throw new IcatException(IcatException.IcatExceptionType.INTERNAL,
-					"InvocationTargetException " + e.getMessage());
+		} catch (ReflectiveOperationException e) {
+			throw new IcatException(IcatException.IcatExceptionType.INTERNAL, e.getClass() + " " + e.getMessage());
 		}
 		if (value instanceof EntityBaseBean) {
 			value = "id:" + ((EntityBaseBean) value).getId();
@@ -1198,9 +1189,8 @@ public class EntityBeanManager {
 				Object value;
 				try {
 					value = getters.get(f).invoke(bean);
-				} catch (IllegalArgumentException | IllegalAccessException | InvocationTargetException e) {
-					throw new IcatException(IcatException.IcatExceptionType.INTERNAL,
-							e.getClass() + " " + e.getMessage());
+				} catch (ReflectiveOperationException e) {
+					throw new IcatException(IcatException.IcatExceptionType.INTERNAL, e.getClass() + " " + e.getMessage());
 				}
 				if (erm.length() == 0) {
 					erm.append(entityClass.getSimpleName() + " exists with ");
@@ -1279,7 +1269,7 @@ public class EntityBeanManager {
 			Object value;
 			try {
 				value = getters.get(f).invoke(bean);
-			} catch (IllegalArgumentException | IllegalAccessException | InvocationTargetException e) {
+			} catch (ReflectiveOperationException e) {
 				throw new IcatException(IcatException.IcatExceptionType.INTERNAL, e.getClass() + " " + e.getMessage());
 			}
 			query = query.setParameter(f.getName(), value);
@@ -1774,7 +1764,7 @@ public class EntityBeanManager {
 					}
 					try {
 						setters.get(field).invoke(bean, arg);
-					} catch (IllegalAccessException | IllegalArgumentException | InvocationTargetException e) {
+					} catch (ReflectiveOperationException e) {
 						throw new IcatException(IcatExceptionType.INTERNAL,
 								"failed to set field " + fName + " of " + klass.getSimpleName());
 					}
@@ -1787,8 +1777,8 @@ public class EntityBeanManager {
 							EntityBaseBean arg = parseSubEntity((JsonObject) aValue, rels.get(fName), creates, localUpdates, userId);
 							beans.add(arg);
 						}
-					} catch (IllegalAccessException | IllegalArgumentException | InvocationTargetException e) {
-
+					} catch (ReflectiveOperationException e) {
+						// TODO: Why is this ignored?
 					}
 				}
 			}
@@ -1816,8 +1806,8 @@ public class EntityBeanManager {
 
 		EntityBaseBean bean = null;
 		try {
-			bean = klass.newInstance();
-		} catch (InstantiationException | IllegalAccessException e) {
+			bean = klass.getDeclaredConstructor().newInstance();
+		} catch (ReflectiveOperationException e) {
 			throw new IcatException(IcatExceptionType.INTERNAL, "failed to instantiate " + klass.getSimpleName());
 		}
 
@@ -2128,8 +2118,8 @@ public class EntityBeanManager {
 
 		EntityBaseBean bean = null;
 		try {
-			bean = klass.newInstance();
-		} catch (InstantiationException | IllegalAccessException e) {
+			bean = klass.getDeclaredConstructor().newInstance();
+		} catch (ReflectiveOperationException e) {
 			throw new IcatException(IcatExceptionType.INTERNAL, "failed to instantiate " + beanName);
 		}
 		boolean create = !contents.containsKey("id");
@@ -2279,8 +2269,8 @@ public class EntityBeanManager {
 		}
 		EntityBaseBean clone = null;
 		try {
-			clone = klass.newInstance();
-		} catch (InstantiationException | IllegalAccessException e) {
+			clone = klass.getDeclaredConstructor().newInstance();
+		} catch (ReflectiveOperationException e) {
 			throw new IcatException(IcatExceptionType.INTERNAL, "failed to instantiate " + beanName);
 		}
 		Map<EntityBaseBean, EntityBaseBean> clonedTo = new HashMap<>();
@@ -2453,10 +2443,9 @@ public class EntityBeanManager {
 
 						if (subClone == null) {
 							try {
-								subClone = subKlass.newInstance();
-							} catch (InstantiationException | IllegalAccessException e) {
-								throw new IcatException(IcatExceptionType.INTERNAL,
-										"failed to instantiate " + subKlass.getSimpleName());
+								subClone = subKlass.getDeclaredConstructor().newInstance();
+							} catch (ReflectiveOperationException e) {
+								throw new IcatException(IcatExceptionType.INTERNAL, "failed to instantiate " + subKlass.getSimpleName());
 							}
 
 							clonedCollection.add(subClone);

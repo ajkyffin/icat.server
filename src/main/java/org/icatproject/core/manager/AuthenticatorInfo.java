@@ -10,7 +10,6 @@ import jakarta.json.JsonObject;
 import jakarta.json.JsonReader;
 
 import org.icatproject.core.IcatException;
-import org.icatproject.core.manager.PropertyHandler.ExtendedAuthenticator;
 
 public class AuthenticatorInfo {
 

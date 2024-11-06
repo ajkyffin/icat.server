@@ -4,7 +4,6 @@ import java.util.Arrays;
 import java.util.List;
 
 import org.icatproject.core.oldparser.OldToken.Type;
-import org.icatproject.core.oldparser.OldParserException;
 
 public class OldInput {
 

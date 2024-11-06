@@ -187,7 +187,6 @@ public class SearchManager {
 		private String entityName;
 		private long start;
 
-		@SuppressWarnings("unchecked")
 		public IndexSome(String entityName, List<Long> ids, EntityManagerFactory entityManagerFactory, long start)
 				throws IcatException {
 			try {

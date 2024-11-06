@@ -52,7 +52,6 @@ public class TestEntityInfo {
 				"InvestigationParameter", "InvestigationType", "InvestigationUser", "ParameterType", "Sample",
 				"SampleType", "SampleParameter", "Technique", "User"));
 		for (String beanName : EntityInfoHandler.getEntityNamesList()) {
-			@SuppressWarnings("unchecked")
 			Class<? extends EntityBaseBean> bean = EntityInfoHandler.getClass(beanName);
 			if (docdbeans.contains(beanName)) {
 				assertTrue(EntityInfoHandler.hasSearchDoc(bean));

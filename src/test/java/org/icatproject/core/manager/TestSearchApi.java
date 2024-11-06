@@ -539,7 +539,7 @@ public class TestSearchApi {
 		ParameterType numericParameterType = parameterType(0, "N" + name, units);
 		ParameterType stringParameterType = parameterType(0, "S" + name, units);
 		Parameter dateParameter = parameter(3 * i, new Date(now + 60000 * k * k), dateParameterType, parent);
-		Parameter numericParameter = parameter(3 * i + 1, new Double(j * j), numericParameterType, parent);
+		Parameter numericParameter = parameter(3 * i + 1, Double.valueOf(j * j), numericParameterType, parent);
 		Parameter stringParameter = parameter(3 * i + 2, "v" + i * i, stringParameterType, parent);
 		queue.add(SearchApi.encodeOperation(entityManager, "create", dateParameter));
 		queue.add(SearchApi.encodeOperation(entityManager, "create", numericParameter));
@@ -568,13 +568,13 @@ public class TestSearchApi {
 			queue.add(SearchApi.encodeOperation(entityManager, "create", investigation));
 
 			InvestigationFacilityCycle investigationFacilityCycle = new InvestigationFacilityCycle();
-			investigationFacilityCycle.setId(new Long(investigationId));
+			investigationFacilityCycle.setId(Long.valueOf(investigationId));
 			investigationFacilityCycle.setFacilityCycle(facilityCycle);
 			investigationFacilityCycle.setInvestigation(investigation);
 			queue.add(SearchApi.encodeOperation(entityManager, "create", investigationFacilityCycle));
 
 			InvestigationInstrument investigationInstrument = new InvestigationInstrument();
-			investigationInstrument.setId(new Long(investigationId));
+			investigationInstrument.setId(Long.valueOf(investigationId));
 			if (investigationId % 2 == 0) {
 				investigationInstrument.setInstrument(instrumentZero);
 			} else {
@@ -671,7 +671,7 @@ public class TestSearchApi {
 		instrument.setFullName("Beamline " + instrumentId);
 		queue.add(SearchApi.encodeOperation(entityManager, "create", instrument));
 		User user = new User();
-		user.setId(new Long(NUMUSERS) + instrumentId);
+		user.setId(Long.valueOf(NUMUSERS) + instrumentId);
 		user.setName("scientist_" + instrumentId);
 		InstrumentScientist instrumentScientist = new InstrumentScientist();
 		instrumentScientist.setId(instrumentId);

@@ -1163,7 +1163,7 @@ public class TestRS {
 		for (int i = 0; i < expectedLabels.size(); i++) {
 			String expectedLabel = expectedLabels.get(i);
 			assertTrue(labelsObject.containsKey(expectedLabel));
-			assertEquals(expectedCounts.get(i), new Long(labelsObject.getJsonNumber(expectedLabel).longValueExact()));
+			assertEquals(expectedCounts.get(i), Long.valueOf(labelsObject.getJsonNumber(expectedLabel).longValueExact()));
 		}
 	}
 

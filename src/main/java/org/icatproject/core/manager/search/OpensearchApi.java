@@ -421,7 +421,7 @@ public class OpensearchApi extends SearchApi {
 			if (!hit.isNull("_score")) {
 				score = hit.getJsonNumber("_score").bigDecimalValue().floatValue();
 			}
-			Integer id = new Integer(hit.getString("_id"));
+			Integer id = Integer.parseInt(hit.getString("_id"));
 			JsonObject source = hit.getJsonObject("_source");
 			// If there are fields requested from another index, join them to the source
 			for (String joinedEntityName : joinedFields.keySet()) {

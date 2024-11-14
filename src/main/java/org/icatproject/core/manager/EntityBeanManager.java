@@ -27,7 +27,6 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import jakarta.annotation.PostConstruct;
-import jakarta.annotation.Resource;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.jms.JMSException;
@@ -142,7 +141,7 @@ public class EntityBeanManager {
 	@Inject
 	SessionManager sessionManager;
 
-	@Resource
+	@Inject
 	UserTransaction userTransaction;
 
 	@PersistenceContext(unitName = "icat")

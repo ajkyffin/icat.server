@@ -18,9 +18,8 @@ import java.util.concurrent.TimeUnit;
 
 import jakarta.annotation.PostConstruct;
 import jakarta.annotation.PreDestroy;
-import jakarta.ejb.EJB;
-import jakarta.ejb.Singleton;
-import jakarta.ejb.Startup;
+import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.inject.Inject;
 import jakarta.jms.JMSException;
 import jakarta.json.JsonObject;
 import jakarta.json.JsonValue;
@@ -43,8 +42,7 @@ import org.slf4j.LoggerFactory;
 import org.slf4j.Marker;
 import org.slf4j.MarkerFactory;
 
-@Singleton
-@Startup
+@ApplicationScoped
 public class GateKeeper {
 
 	public static Comparator<String> stringsBySize = new Comparator<String>() {
@@ -68,13 +66,13 @@ public class GateKeeper {
 
 	private int maxIdsInQuery;
 
-	@EJB
+	@Inject
 	GateKeeperHelper gateKeeperHelper;
 
 	@PersistenceContext(unitName = "icat")
 	EntityManager entityManager;
 
-	@EJB
+	@Inject
 	PropertyHandler propertyHandler;
 
 	private Map<String, Set<String>> publicSteps;

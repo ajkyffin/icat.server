@@ -17,7 +17,8 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import jakarta.annotation.PostConstruct;
-import jakarta.ejb.Singleton;
+import jakarta.enterprise.context.ApplicationScoped;
+
 import javax.naming.InitialContext;
 
 import org.icatproject.authentication.Authenticator;
@@ -30,7 +31,7 @@ import org.slf4j.LoggerFactory;
 import org.slf4j.Marker;
 import org.slf4j.MarkerFactory;
 
-@Singleton
+@ApplicationScoped
 public class PropertyHandler {
 
 	public enum CallType {

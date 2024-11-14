@@ -31,9 +31,8 @@ import java.util.concurrent.Future;
 
 import jakarta.annotation.PostConstruct;
 import jakarta.annotation.PreDestroy;
-import jakarta.ejb.EJB;
-import jakarta.ejb.Singleton;
-import jakarta.ejb.Startup;
+import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.inject.Inject;
 import jakarta.json.Json;
 import jakarta.json.JsonArrayBuilder;
 import jakarta.json.JsonNumber;
@@ -64,8 +63,7 @@ import org.slf4j.LoggerFactory;
 import org.slf4j.Marker;
 import org.slf4j.MarkerFactory;
 
-@Startup
-@Singleton
+@ApplicationScoped
 public class SearchManager {
 
 	public static final int DEFAULT_INDEX_BATCH_SIZE = 500;
@@ -526,7 +524,7 @@ public class SearchManager {
 
 	private ExecutorService getBeanDocExecutor;
 
-	@EJB
+	@Inject
 	PropertyHandler propertyHandler;
 	private PopState popState = PopState.STOPPED;
 

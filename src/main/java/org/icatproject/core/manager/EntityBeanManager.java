@@ -27,10 +27,8 @@ import java.util.regex.Pattern;
 
 import jakarta.annotation.PostConstruct;
 import jakarta.annotation.Resource;
-import jakarta.ejb.EJB;
-import jakarta.ejb.Stateless;
-import jakarta.ejb.TransactionManagement;
-import jakarta.ejb.TransactionManagementType;
+import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.inject.Inject;
 import jakarta.jms.JMSException;
 import jakarta.json.Json;
 import jakarta.json.JsonArray;
@@ -96,8 +94,7 @@ import org.slf4j.LoggerFactory;
 import org.slf4j.Marker;
 import org.slf4j.MarkerFactory;
 
-@Stateless
-@TransactionManagement(TransactionManagementType.BEAN)
+@ApplicationScoped
 public class EntityBeanManager {
 
 	private class EntitySetResult {
@@ -126,22 +123,22 @@ public class EntityBeanManager {
 
 	private static final Pattern timestampPattern = Pattern.compile(":ts(\\d{14})");
 
-	@EJB
+	@Inject
 	GateKeeper gateKeeper;
 
-	@EJB
+	@Inject
 	PropertyHandler propertyHandler;
 
-	@EJB
+	@Inject
 	NotificationTransmitter notificationTransmitter;
 
-	@EJB
+	@Inject
 	Transmitter transmitter;
 
-	@EJB
+	@Inject
 	SearchManager searchManager;
 
-	@EJB
+	@Inject
 	SessionManager sessionManager;
 
 	@Resource

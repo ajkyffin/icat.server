@@ -11,10 +11,10 @@ import java.util.Set;
 
 import jakarta.annotation.PostConstruct;
 import jakarta.annotation.Resource;
-import jakarta.ejb.EJB;
 import jakarta.ejb.Stateless;
 import jakarta.ejb.TransactionManagement;
 import jakarta.ejb.TransactionManagementType;
+import jakarta.inject.Inject;
 import jakarta.interceptor.AroundInvoke;
 import jakarta.interceptor.InvocationContext;
 import jakarta.jws.WebMethod;
@@ -85,18 +85,18 @@ public class ICAT {
 
 	private Map<String, ExtendedAuthenticator> authPlugins = new HashMap<>();
 
-	@EJB
+	@Inject
 	EntityBeanManager beanManager;
 
-	@EJB
+	@Inject
 	PropertyHandler propertyHandler;
 
 	private Set<String> rootUserNames;
 
-	@EJB
+	@Inject
 	NotificationTransmitter transmitter;
 
-	@EJB
+	@Inject
 	SessionManager sessionManager;
 
 	@Resource

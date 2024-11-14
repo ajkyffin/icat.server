@@ -115,7 +115,7 @@ public class GateKeeper {
 	}
 
 	@PreDestroy()
-	private void exit() {
+	void exit() {
 		logger.info("GateKeeper closing down");
 		executor.shutdown();
 		try {
@@ -300,7 +300,7 @@ public class GateKeeper {
 	}
 
 	@PostConstruct
-	private void init() {
+	void init() {
 		logger.info("Creating GateKeeper singleton");
 		maxIdsInQuery = propertyHandler.getMaxIdsInQuery();
 		rootUserNames = propertyHandler.getRootUserNames();

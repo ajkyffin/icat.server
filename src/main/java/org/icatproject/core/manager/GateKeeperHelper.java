@@ -26,7 +26,7 @@ import org.icatproject.core.entity.Rule;
 public class GateKeeperHelper {
 
 	@PersistenceContext(unitName = "icat")
-	private EntityManager gateKeeperManager;
+	EntityManager gateKeeperManager;
 
 	public List<String> getRules(String ruleQuery, String member, String bean, String attribute) {
 		return gateKeeperManager

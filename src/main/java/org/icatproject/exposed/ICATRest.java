@@ -103,7 +103,7 @@ public class ICATRest {
 	private int lifetimeMinutes;
 
 	@PersistenceContext(unitName = "icat")
-	private EntityManager entityManager;
+	EntityManager entityManager;
 
 	@Inject
 	Porter porter;
@@ -673,7 +673,7 @@ public class ICATRest {
 	}
 
 	@PostConstruct
-	private void init() {
+	void init() {
 		authPlugins = propertyHandler.getAuthPlugins();
 		lifetimeMinutes = propertyHandler.getLifetimeMinutes();
 		rootUserNames = propertyHandler.getRootUserNames();

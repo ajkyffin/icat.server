@@ -518,7 +518,7 @@ public class SearchManager {
 	private Entry<String, PopulateBucket> populatingClassEntry;
 
 	@PersistenceUnit(unitName = "icat")
-	private EntityManagerFactory entityManagerFactory;
+	EntityManagerFactory entityManagerFactory;
 
 	private int populateBlockSize;
 
@@ -776,7 +776,7 @@ public class SearchManager {
 	}
 
 	@PreDestroy
-	private void exit() {
+	void exit() {
 		logger.info("Closing down SearchManager");
 		if (active) {
 			populateExecutor.shutdown();
@@ -851,7 +851,7 @@ public class SearchManager {
 	}
 
 	@PostConstruct
-	private void init() {
+	void init() {
 		searchEngine = propertyHandler.getSearchEngine();
 		logger.info("Initialising SearchManager for engine {}", searchEngine);
 		urls = propertyHandler.getSearchUrls();

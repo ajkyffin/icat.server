@@ -106,7 +106,7 @@ public class PropertyHandler {
 	private long searchQueueFileMaxSize;
 
 	@PostConstruct
-	private void init() {
+	void init() {
 		CheckedProperties props = new CheckedProperties();
 		try {
 			props.loadFromResource("run.properties");

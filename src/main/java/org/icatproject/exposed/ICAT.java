@@ -269,7 +269,7 @@ public class ICAT {
 	}
 
 	@PostConstruct
-	private void init() {
+	void init() {
 		authPlugins = propertyHandler.getAuthPlugins();
 		rootUserNames = propertyHandler.getRootUserNames();
 	}
@@ -307,7 +307,7 @@ public class ICAT {
 	}
 
 	@AroundInvoke
-	private Object logMethods(InvocationContext ctx) throws IcatException {
+	Object logMethods(InvocationContext ctx) throws IcatException {
 
 		String className = ctx.getTarget().getClass().getName();
 		String methodName = ctx.getMethod().getName();

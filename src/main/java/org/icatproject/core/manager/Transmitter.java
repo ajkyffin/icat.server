@@ -33,7 +33,7 @@ public class Transmitter {
 	PropertyHandler propertyHandler;
 
 	@PostConstruct
-	private void init() {
+	void init() {
 
 		try {
 			InitialContext ic = new InitialContext();
@@ -50,7 +50,7 @@ public class Transmitter {
 	}
 
 	@PreDestroy()
-	private void exit() {
+	void exit() {
 		try {
 			if (topicConnection != null) {
 				topicConnection.close();

@@ -23,7 +23,6 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import jakarta.annotation.PostConstruct;
-import jakarta.ejb.Singleton;
 import jakarta.json.Json;
 import jakarta.json.JsonObject;
 import jakarta.json.JsonReader;
@@ -31,6 +30,8 @@ import jakarta.json.stream.JsonGenerator;
 import jakarta.json.stream.JsonParser;
 import jakarta.json.stream.JsonParser.Event;
 import jakarta.json.stream.JsonParsingException;
+import jakarta.enterprise.context.ApplicationScoped;
+
 import javax.naming.InitialContext;
 
 import org.apache.http.HttpEntity;
@@ -59,7 +60,7 @@ import org.slf4j.LoggerFactory;
 import org.slf4j.Marker;
 import org.slf4j.MarkerFactory;
 
-@Singleton
+@ApplicationScoped
 public class PropertyHandler {
 
 	public class RestAuthenticator implements Authenticator {

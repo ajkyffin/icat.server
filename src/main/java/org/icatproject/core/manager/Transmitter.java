@@ -2,8 +2,8 @@ package org.icatproject.core.manager;
 
 import jakarta.annotation.PostConstruct;
 import jakarta.annotation.PreDestroy;
-import jakarta.ejb.EJB;
-import jakarta.ejb.Singleton;
+import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.inject.Inject;
 import jakarta.jms.JMSException;
 import jakarta.jms.MessageProducer;
 import jakarta.jms.Session;
@@ -19,7 +19,7 @@ import org.slf4j.LoggerFactory;
 import org.slf4j.Marker;
 import org.slf4j.MarkerFactory;
 
-@Singleton
+@ApplicationScoped
 public class Transmitter {
 
 	private static Logger logger = LoggerFactory.getLogger(Transmitter.class);
@@ -29,7 +29,7 @@ public class Transmitter {
 
 	private TopicConnection topicConnection;
 
-	@EJB
+	@Inject
 	PropertyHandler propertyHandler;
 
 	@PostConstruct

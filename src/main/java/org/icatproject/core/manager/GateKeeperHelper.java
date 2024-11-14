@@ -6,11 +6,11 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-import jakarta.ejb.Stateless;
-import jakarta.ejb.TransactionManagement;
-import jakarta.ejb.TransactionManagementType;
+import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
+import jakarta.transaction.Transactional;
+import jakarta.transaction.Transactional.TxType;
 
 import org.icatproject.core.entity.PublicStep;
 import org.icatproject.core.entity.Rule;
@@ -19,12 +19,10 @@ import org.icatproject.core.entity.Rule;
  * This class contains methods that provide authorization rules from the
  * database to the GateKeeper. They need to be run outside of the transaction
  * that is active in GateKeeper, so that they cannot be affected by any changes
- * made in that transaction. This is acheived by having them in a separate EJB
- * with bean-managed transactions (these never use the transaction of the
- * calling bean).
+ * made in that transaction.
  */
-@Stateless
-@TransactionManagement(TransactionManagementType.BEAN)
+@ApplicationScoped
+@Transactional(TxType.NOT_SUPPORTED)
 public class GateKeeperHelper {
 
 	@PersistenceContext(unitName = "icat")

@@ -22,10 +22,8 @@ import java.util.Map.Entry;
 import java.util.Set;
 
 import jakarta.annotation.PostConstruct;
-import jakarta.ejb.EJB;
-import jakarta.ejb.Stateless;
-import jakarta.ejb.TransactionManagement;
-import jakarta.ejb.TransactionManagementType;
+import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.inject.Inject;
 import jakarta.json.Json;
 import jakarta.json.JsonArray;
 import jakarta.json.JsonArrayBuilder;
@@ -87,8 +85,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 @Path("/")
-@Stateless
-@TransactionManagement(TransactionManagementType.BEAN)
+@ApplicationScoped
 public class ICATRest {
 
 	private static Logger logger = LoggerFactory.getLogger(ICATRest.class);
@@ -97,10 +94,10 @@ public class ICATRest {
 
 	private Map<String, ExtendedAuthenticator> authPlugins;
 
-	@EJB
+	@Inject
 	EntityBeanManager beanManager;
 
-	@EJB
+	@Inject
 	GateKeeper gatekeeper;
 
 	private int lifetimeMinutes;
@@ -108,13 +105,13 @@ public class ICATRest {
 	@PersistenceContext(unitName = "icat")
 	private EntityManager entityManager;
 
-	@EJB
+	@Inject
 	Porter porter;
 
-	@EJB
+	@Inject
 	PropertyHandler propertyHandler;
 
-	@EJB
+	@Inject
 	SessionManager sessionManager;
 
 	private Set<String> rootUserNames;

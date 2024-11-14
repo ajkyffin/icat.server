@@ -22,10 +22,8 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import jakarta.annotation.PostConstruct;
-import jakarta.ejb.EJB;
-import jakarta.ejb.Stateless;
-import jakarta.ejb.TransactionManagement;
-import jakarta.ejb.TransactionManagementType;
+import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.inject.Inject;
 import jakarta.json.Json;
 import jakarta.json.stream.JsonParser;
 import jakarta.json.stream.JsonParser.Event;
@@ -52,8 +50,7 @@ import org.icatproject.core.parser.LexerException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-@Stateless
-@TransactionManagement(TransactionManagementType.BEAN)
+@ApplicationScoped
 public class Porter {
 
 	public enum Attributes {
@@ -78,13 +75,13 @@ public class Porter {
 		OVERWRITE
 	}
 
-	@EJB
+	@Inject
 	EntityBeanManager beanManager;
 
-	@EJB
+	@Inject
 	PropertyHandler propertyHandler;
 
-	@EJB
+	@Inject
 	SessionManager sessionManager;
 
 	private Set<String> rootUserNames;

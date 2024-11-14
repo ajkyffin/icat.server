@@ -231,6 +231,9 @@
 				<configuration>
 					<encoding>${project.build.sourceEncoding}</encoding>
 					<release>11</release>
+					<excludes>
+						<exclude>**/ICAT_CDI.java</exclude>
+					</excludes>
 				</configuration>
 			</plugin>
 

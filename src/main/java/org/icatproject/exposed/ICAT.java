@@ -11,15 +11,11 @@ import java.util.Set;
 
 import jakarta.annotation.PostConstruct;
 import jakarta.annotation.Resource;
-import jakarta.ejb.Stateless;
-import jakarta.ejb.TransactionManagement;
-import jakarta.ejb.TransactionManagementType;
 import jakarta.inject.Inject;
 import jakarta.interceptor.AroundInvoke;
 import jakarta.interceptor.InvocationContext;
 import jakarta.jws.WebMethod;
 import jakarta.jws.WebParam;
-import jakarta.jws.WebService;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.xml.ws.WebServiceContext;
 import jakarta.xml.ws.handler.MessageContext;
@@ -76,9 +72,11 @@ import org.icatproject.core.manager.SessionManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-@Stateless
-@WebService(targetNamespace = "http://icatproject.org")
-@TransactionManagement(TransactionManagementType.BEAN)
+/**
+ * The SOAP interface
+ *
+ * This must be extended to be deployed as either an EJB or CDI bean.
+ */
 public class ICAT {
 
 	private static Logger logger = LoggerFactory.getLogger(ICAT.class);

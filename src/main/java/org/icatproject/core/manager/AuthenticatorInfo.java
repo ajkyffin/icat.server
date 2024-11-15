@@ -19,6 +19,9 @@ public class AuthenticatorInfo {
 	private boolean admin;
 	private List<AuthenticatorCredentialKey> keys = new ArrayList<>();
 
+	private AuthenticatorInfo() {
+	}
+
 	public AuthenticatorInfo(String mnemonic, ExtendedAuthenticator auth) throws IcatException {
 		this.mnemonic = mnemonic;
 

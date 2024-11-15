@@ -242,7 +242,6 @@ public class ICATRest {
 	 */
 	@DELETE
 	@Path("entityManager")
-	@Produces(MediaType.APPLICATION_JSON)
 	public void delete(@Context HttpServletRequest request, @QueryParam("sessionId") String sessionId,
 			@QueryParam("entities") String json) throws IcatException {
 

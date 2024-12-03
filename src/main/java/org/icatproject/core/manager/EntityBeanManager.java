@@ -4,10 +4,10 @@ import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
-import java.io.PrintStream;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.math.BigDecimal;
+import java.security.NoSuchAlgorithmException;
 import java.text.DateFormat;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
@@ -43,6 +43,7 @@ import jakarta.json.stream.JsonGenerator;
 import jakarta.persistence.EntityExistsException;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
+import jakarta.persistence.PersistenceException;
 import jakarta.persistence.Query;
 import jakarta.persistence.TypedQuery;
 import jakarta.transaction.HeuristicMixedException;
@@ -229,7 +230,7 @@ public class EntityBeanManager {
 					throw new IcatException(IcatException.IcatExceptionType.VALIDATION,
 							"Attempt to set field " + field.getName() + " of " + thisBean + " to null");
 				}
-			} catch (Exception e) {
+			} catch (ReflectiveOperationException e) {
 				throw new IcatException(IcatException.IcatExceptionType.INTERNAL, "" + e);
 			}
 		}
@@ -239,15 +240,18 @@ public class EntityBeanManager {
 	public CreateResponse create(String userId, EntityBaseBean bean, boolean allAttributes, String ip) throws IcatException {
 
 		logger.info(userId + " creating " + bean.getClass().getSimpleName());
+
+		PersistMode persistMode;
+		if (allAttributes) {
+			persistMode = PersistMode.IMPORTALL;
+		} else {
+			persistMode = PersistMode.IMPORT_OR_WS;
+		}
+
 		try {
-			userTransaction.begin();
-			PersistMode persistMode;
-			if (allAttributes) {
-				persistMode = PersistMode.IMPORTALL;
-			} else {
-				persistMode = PersistMode.IMPORT_OR_WS;
-			}
 			try {
+				userTransaction.begin();
+
 				long startMillis = log ? System.currentTimeMillis() : 0;
 				bean.preparePersist(userId, entityManager, persistMode);
 				logger.trace(bean + " prepared for persist.");
@@ -277,39 +281,33 @@ public class EntityBeanManager {
 				}
 				return new CreateResponse(beanId, notification);
 			} catch (EntityExistsException e) {
-				userTransaction.rollback();
 				throw new IcatException(IcatException.IcatExceptionType.OBJECT_ALREADY_EXISTS, e.getMessage());
-			} catch (IcatException e) {
+			} catch (PersistenceException e) {
 				userTransaction.rollback();
-				throw e;
-			} catch (Throwable e) {
-				userTransaction.rollback();
-				logger.trace("Transaction rolled back for creation of " + bean + " because of " + e.getClass() + " "
-						+ e.getMessage());
-				updateCache();
+				logger.trace("Transaction rolled back for creation of {}", bean, e);
 
 				bean.preparePersist(userId, entityManager, persistMode);
 				isUnique(bean);
 				isValid(bean);
-				throw new IcatException(IcatException.IcatExceptionType.INTERNAL,
-						"Unexpected DB response " + e.getClass() + " " + e.getMessage());
-			}
-		} catch (IllegalStateException e) {
-			throw new IcatException(IcatException.IcatExceptionType.INTERNAL, "IllegalStateException" + e.getMessage());
-		} catch (SecurityException e) {
-			throw new IcatException(IcatException.IcatExceptionType.INTERNAL, "SecurityException" + e.getMessage());
-		} catch (SystemException e) {
-			throw new IcatException(IcatException.IcatExceptionType.INTERNAL, "SystemException" + e.getMessage());
-		} catch (NotSupportedException e) {
-			throw new IcatException(IcatException.IcatExceptionType.INTERNAL, "NotSupportedException" + e.getMessage());
-		}
 
+				logger.error("Database error", e);
+				throw new IcatException(IcatException.IcatExceptionType.INTERNAL, "Database error: " + e.getMessage());
+			} finally {
+				if (userTransaction.getStatus() != Status.STATUS_NO_TRANSACTION) {
+					userTransaction.rollback();
+				}
+			}
+		} catch (HeuristicMixedException | HeuristicRollbackException | NotSupportedException | RollbackException | SystemException e) {
+			logger.error("Transaction error", e);
+			throw new IcatException(IcatException.IcatExceptionType.INTERNAL, "Transaction error: " + e.getMessage());
+		}
 	}
 
 	private boolean createAllowed(String userId, EntityBaseBean bean) throws IcatException {
 		try {
-			userTransaction.begin();
 			try {
+				userTransaction.begin();
+
 				try {
 					bean.preparePersist(userId, entityManager, PersistMode.IMPORT_OR_WS);
 					logger.debug(bean + " prepared for persist (createAllowed).");
@@ -319,16 +317,18 @@ public class EntityBeanManager {
 					logger.debug(bean + " flushed (createAllowed).");
 				} catch (EntityExistsException e) {
 					throw new IcatException(IcatException.IcatExceptionType.OBJECT_ALREADY_EXISTS, e.getMessage());
-				} catch (Throwable e) {
+				} catch (PersistenceException e) {
 					userTransaction.rollback();
-					logger.debug("Transaction rolled back for creation of " + bean + " because of " + e.getClass() + " "
-							+ e.getMessage());
+					logger.debug("Transaction rolled back for creation of {}", bean, e);
+
 					bean.preparePersist(userId, entityManager, PersistMode.IMPORT_OR_WS);
 					isUnique(bean);
 					isValid(bean);
-					throw new IcatException(IcatException.IcatExceptionType.INTERNAL,
-							"Unexpected DB response " + e.getClass() + " " + e.getMessage());
+
+					logger.error("Database error", e);
+					throw new IcatException(IcatException.IcatExceptionType.INTERNAL, "Database error: " + e.getMessage());
 				}
+
 				try {
 					gateKeeper.performAuthorisation(userId, bean, AccessType.CREATE);
 					return true;
@@ -337,9 +337,6 @@ public class EntityBeanManager {
 						throw e;
 					}
 					return false;
-				} catch (Throwable e) {
-					throw new IcatException(IcatException.IcatExceptionType.INTERNAL,
-							e.getClass() + " " + e.getMessage());
 				}
 			} finally {
 				if (userTransaction.getStatus() != Status.STATUS_NO_TRANSACTION) {
@@ -347,21 +344,19 @@ public class EntityBeanManager {
 					logger.debug("Transaction rolled back (createAllowed)");
 				}
 			}
-		} catch (IcatException e) {
-			logger.debug(e.getClass() + " " + e.getMessage());
-			throw e;
-		} catch (Exception e) {
-			logger.error("Transaction problem? " + e.getClass() + " " + e.getMessage());
-			throw new IcatException(IcatException.IcatExceptionType.INTERNAL, e.getClass() + " " + e.getMessage());
+		} catch (NotSupportedException | SystemException e) {
+			logger.error("Transaction error", e);
+			throw new IcatException(IcatException.IcatExceptionType.INTERNAL, "Transaction error: " + e.getMessage());
 		}
-
 	}
 
 	public List<CreateResponse> createMany(String userId, List<EntityBaseBean> beans, String ip) throws IcatException {
 		try {
-			userTransaction.begin();
 			List<CreateResponse> crs = new ArrayList<CreateResponse>();
+
 			try {
+				userTransaction.begin();
+
 				long startMillis = log ? System.currentTimeMillis() : 0;
 				for (EntityBaseBean bean : beans) {
 					bean.preparePersist(userId, entityManager, PersistMode.IMPORT_OR_WS);
@@ -396,18 +391,15 @@ public class EntityBeanManager {
 				}
 
 				return crs;
-			} catch (EntityExistsException e) {
-				userTransaction.rollback();
-				throw new IcatException(IcatException.IcatExceptionType.OBJECT_ALREADY_EXISTS, e.getMessage(),
-						crs.size());
 			} catch (IcatException e) {
-				userTransaction.rollback();
 				e.setOffset(crs.size());
 				throw e;
-			} catch (Throwable e) {
+			} catch (EntityExistsException e) {
+				throw new IcatException(IcatException.IcatExceptionType.OBJECT_ALREADY_EXISTS, e.getMessage(), crs.size());
+			} catch (PersistenceException e) {
 				userTransaction.rollback();
-				logger.trace("Transaction rolled back for creation because of " + e.getClass() + " " + e.getMessage());
-				updateCache();
+				logger.trace("Transaction rolled back for creation", e);
+
 				int pos = crs.size();
 				EntityBaseBean bean = beans.get(pos);
 				try {
@@ -453,20 +445,17 @@ public class EntityBeanManager {
 						}
 					}
 				}
-				throw new IcatException(IcatException.IcatExceptionType.INTERNAL,
-						"Unexpected DB response " + e.getClass() + " " + e.getMessage(), pos);
 
+				logger.debug("Database error", e);
+				throw new IcatException(IcatException.IcatExceptionType.INTERNAL, "Database error: " + e.getMessage(), pos);
+			} finally {
+				if (userTransaction.getStatus() != Status.STATUS_NO_TRANSACTION) {
+					userTransaction.rollback();
+				}
 			}
-		} catch (IllegalStateException e) {
-			throw new IcatException(IcatException.IcatExceptionType.INTERNAL, "IllegalStateException" + e.getMessage(),
-					-1);
-		} catch (SecurityException e) {
-			throw new IcatException(IcatException.IcatExceptionType.INTERNAL, "SecurityException" + e.getMessage(), -1);
-		} catch (SystemException e) {
-			throw new IcatException(IcatException.IcatExceptionType.INTERNAL, "SystemException" + e.getMessage(), -1);
-		} catch (NotSupportedException e) {
-			throw new IcatException(IcatException.IcatExceptionType.INTERNAL, "NotSupportedException" + e.getMessage(),
-					-1);
+		} catch (HeuristicMixedException | HeuristicRollbackException | NotSupportedException | RollbackException | SystemException e) {
+			logger.error("Transaction error", e);
+			throw new IcatException(IcatException.IcatExceptionType.INTERNAL, "Transaction error: " + e.getMessage(), -1);
 		}
 	}
 
@@ -477,9 +466,11 @@ public class EntityBeanManager {
 		logger.info("{} requests delete of {} entities", userId, beans.size());
 		try {
 			int offset = 0;
-			userTransaction.begin();
-			EntityBaseBean firstBean = null;
+
 			try {
+				userTransaction.begin();
+				EntityBaseBean firstBean = null;
+
 				long startMillis = log ? System.currentTimeMillis() : 0;
 
 				// A set is used because investigations have datasets - but also
@@ -524,19 +515,19 @@ public class EntityBeanManager {
 					transmitter.processMessage("delete", ip, baos.toString(), startMillis);
 				}
 			} catch (IcatException e) {
-				userTransaction.rollback();
 				e.setOffset(offset);
 				throw e;
-			} catch (Throwable e) {
-				logger.error("Problem in deleteMany", e);
-				userTransaction.rollback();
-				updateCache();
-				throw new IcatException(IcatException.IcatExceptionType.INTERNAL,
-						"Unexpected DB response " + e.getClass() + " " + e.getMessage(), offset);
+			} catch (PersistenceException e) {
+				logger.error("Database error", e);
+				throw new IcatException(IcatException.IcatExceptionType.INTERNAL, "Database error: " + e.getMessage(), offset);
+			} finally {
+				if (userTransaction.getStatus() != Status.STATUS_NO_TRANSACTION) {
+					userTransaction.rollback();
+				}
 			}
-		} catch (IllegalStateException | SecurityException | SystemException | NotSupportedException e) {
-			logger.error("Problem in deleteMany", e);
-			throw new IcatException(IcatException.IcatExceptionType.INTERNAL, e.getClass() + " " + e.getMessage(), -1);
+		} catch (HeuristicMixedException | HeuristicRollbackException | NotSupportedException | RollbackException | SystemException e) {
+			logger.error("Transaction error", e);
+			throw new IcatException(IcatException.IcatExceptionType.INTERNAL, "Transaction error: " + e.getMessage(), -1);
 		}
 	}
 
@@ -571,10 +562,8 @@ public class EntityBeanManager {
 					} catch (IOException e) {
 						throw e;
 					} catch (Exception e) {
-						ByteArrayOutputStream baos = new ByteArrayOutputStream();
-						e.printStackTrace(new PrintStream(baos));
-						logger.error(baos.toString());
-						throw new IOException(e.getClass() + " " + e.getMessage());
+						logger.error("Export error", e);
+						throw new IOException(e.getMessage(), e);
 					}
 				}
 				output.close();
@@ -639,10 +628,8 @@ public class EntityBeanManager {
 								} catch (IOException e) {
 									throw e;
 								} catch (Exception e) {
-									ByteArrayOutputStream baos = new ByteArrayOutputStream();
-									e.printStackTrace(new PrintStream(baos));
-									logger.error(baos.toString());
-									throw new IOException(e.getClass() + " " + e.getMessage());
+									logger.error("Export error", e);
+									throw new IOException(e.getMessage(), e);
 								}
 							}
 						}
@@ -850,8 +837,9 @@ public class EntityBeanManager {
 		EntityBaseBean object = null;
 		try {
 			object = entityManager.find(entityClass, primaryKey);
-		} catch (Throwable e) {
-			throw new IcatException(IcatException.IcatExceptionType.INTERNAL, "Unexpected DB response " + e);
+		} catch (PersistenceException e) {
+			logger.error("Database error", e);
+			throw new IcatException(IcatException.IcatExceptionType.INTERNAL, "Database error: " + e.getMessage());
 		}
 
 		if (object == null) {
@@ -937,7 +925,7 @@ public class EntityBeanManager {
 						beans.add(b);
 						beans.addAll(getDependentBeans(b));
 					}
-				} catch (Exception e) {
+				} catch (ReflectiveOperationException e) {
 					throw new IcatException(IcatExceptionType.INTERNAL, e.getMessage());
 				}
 			}
@@ -1081,7 +1069,7 @@ public class EntityBeanManager {
 					try {
 						Query typeQuery = entityManager.createQuery(typeQueryString).setMaxResults(1);
 						klass = typeQuery.getSingleResult().getClass();
-					} catch (Exception e) {
+					} catch (PersistenceException e) {
 						throw new IcatException(IcatException.IcatExceptionType.BAD_PARAMETER,
 								"Unable to handle query " + q + " with Oracle DB");
 					}
@@ -1211,7 +1199,7 @@ public class EntityBeanManager {
 			try {
 				Method method = getters.get(field);
 				value = method.invoke(bean, (Object[]) new Class[] {});
-			} catch (Exception e) {
+			} catch (ReflectiveOperationException e) {
 				throw new IcatException(IcatException.IcatExceptionType.INTERNAL, "" + e);
 			}
 
@@ -1229,7 +1217,7 @@ public class EntityBeanManager {
 			Object value;
 			try {
 				value = method.invoke(bean, (Object[]) new Class[] {});
-			} catch (Exception e) {
+			} catch (ReflectiveOperationException e) {
 				throw new IcatException(IcatException.IcatExceptionType.INTERNAL, "" + e);
 			}
 			if (value != null) {
@@ -1664,7 +1652,7 @@ public class EntityBeanManager {
 					fieldAndMethod.getValue().invoke(thisBean, value);
 				}
 				logger.trace("Updated " + klass.getSimpleName() + "." + field.getName() + " to " + value);
-			} catch (Exception e) {
+			} catch (ReflectiveOperationException e) {
 				e.printStackTrace();
 				throw new IcatException(IcatException.IcatExceptionType.INTERNAL, "" + e);
 			}
@@ -1896,8 +1884,9 @@ public class EntityBeanManager {
 
 	public NotificationMessage update(String userId, EntityBaseBean bean, boolean allAttributes, String ip) throws IcatException {
 		try {
-			userTransaction.begin();
 			try {
+				userTransaction.begin();
+
 				long startMillis = log ? System.currentTimeMillis() : 0;
 				EntityBaseBean beanManaged = find(bean);
 				gateKeeper.performAuthorisation(userId, beanManaged, AccessType.UPDATE);
@@ -1959,33 +1948,24 @@ public class EntityBeanManager {
 					searchManager.updateDocument(entityManager, beanManaged);
 				}
 				return notification;
-			} catch (IcatException e) {
+			} catch (PersistenceException e) {
 				userTransaction.rollback();
-				throw e;
-			} catch (Throwable e) {
-				userTransaction.rollback();
-				updateCache();
 				EntityBaseBean beanManaged = find(bean);
 				beanManaged.setModId(userId);
 				merge(beanManaged, bean);
 				beanManaged.postMergeFixup(entityManager);
 				isValid(beanManaged);
-				logger.error("Internal error", e);
-				throw new IcatException(IcatException.IcatExceptionType.INTERNAL,
-						"Unexpected DB response " + e.getClass() + " " + e.getMessage());
-			}
-		} catch (IllegalStateException | SecurityException | SystemException | NotSupportedException e) {
-			logger.error("Internal error", e);
-			throw new IcatException(IcatException.IcatExceptionType.INTERNAL, e.getClass() + " " + e.getMessage());
-		}
-	}
 
-	private void updateCache() throws IcatException {
-		try {
-			gateKeeper.updateCache();
-		} catch (JMSException e) {
-			logger.error("Internal error", e);
-			throw new IcatException(IcatException.IcatExceptionType.INTERNAL, e.getClass() + " " + e.getMessage());
+				logger.error("Database error", e);
+				throw new IcatException(IcatException.IcatExceptionType.INTERNAL, "Database error: " + e.getMessage());
+			} finally {
+				if (userTransaction.getStatus() != Status.STATUS_NO_TRANSACTION) {
+					userTransaction.rollback();
+				}
+			}
+		} catch (HeuristicMixedException | HeuristicRollbackException | NotSupportedException | RollbackException | SystemException e) {
+			logger.error("Transaction error", e);
+			throw new IcatException(IcatException.IcatExceptionType.INTERNAL, "Transaction error: " + e.getMessage());
 		}
 	}
 
@@ -2002,8 +1982,10 @@ public class EntityBeanManager {
 
 		try {
 			int offset = 0;
-			userTransaction.begin();
+
 			try (JsonReader reader = Json.createReader(new ByteArrayInputStream(json.getBytes()))) {
+				userTransaction.begin();
+
 				long startMillis = log ? System.currentTimeMillis() : 0;
 				JsonStructure top = reader.read();
 
@@ -2079,17 +2061,17 @@ public class EntityBeanManager {
 			} catch (IcatException e) {
 				e.setOffset(offset);
 				throw e;
+			} catch (PersistenceException e) {
+				logger.error("Database error", e);
+				throw new IcatException(IcatException.IcatExceptionType.INTERNAL, "Database error: " + e.getMessage());
+			} finally {
+				if (userTransaction.getStatus() != Status.STATUS_NO_TRANSACTION) {
+					userTransaction.rollback();
+				}
 			}
-		} catch (IllegalStateException | SecurityException | SystemException | NotSupportedException | RollbackException
-				| HeuristicMixedException | HeuristicRollbackException e) {
-			throw new IcatException(IcatException.IcatExceptionType.INTERNAL, e.getClass() + " " + e.getMessage());
-		} catch (IcatException e) {
-			try {
-				userTransaction.rollback();
-			} catch (IllegalStateException | SecurityException | SystemException e1) {
-				// Ignore it
-			}
-			throw e;
+		} catch (HeuristicMixedException | HeuristicRollbackException | NotSupportedException | RollbackException | SystemException e) {
+			logger.error("Transaction error", e);
+			throw new IcatException(IcatException.IcatExceptionType.INTERNAL, "Transaction error: " + e.getMessage());
 		}
 	}
 
@@ -2148,7 +2130,7 @@ public class EntityBeanManager {
 			}
 			entityManager.flush();
 			logger.trace(bean + " flushed.");
-		} catch (Throwable e) {
+		} catch (PersistenceException e) {
 			/*
 			 * Clear transaction so can use database again.
 			 */
@@ -2225,9 +2207,8 @@ public class EntityBeanManager {
 				}
 			}
 
-			throw new IcatException(IcatException.IcatExceptionType.INTERNAL,
-					"Unexpected DB response " + e.getClass() + " " + e.getMessage());
-
+			logger.error("Database error", e);
+			throw new IcatException(IcatException.IcatExceptionType.INTERNAL, "Database error: " + e.getMessage());
 		}
 
 		// Check authz now everything persisted and update creates and
@@ -2290,7 +2271,7 @@ public class EntityBeanManager {
 				} else {
 					fieldAndMethod.getValue().invoke(clone, value);
 				}
-			} catch (Exception e) {
+			} catch (ReflectiveOperationException e) {
 				throw new IcatException(IcatException.IcatExceptionType.INTERNAL, "" + e);
 			}
 		}
@@ -2325,7 +2306,7 @@ public class EntityBeanManager {
 				throw new IcatException(IcatException.IcatExceptionType.BAD_PARAMETER,
 						"Keys " + keys + " do not represent a json object");
 			}
-		} catch (Exception e) {
+		} catch (ReflectiveOperationException e) {
 			throw new IcatException(IcatException.IcatExceptionType.INTERNAL, "" + e);
 		}
 
@@ -2364,24 +2345,28 @@ public class EntityBeanManager {
 
 				userTransaction.commit();
 
+			} catch (NoSuchAlgorithmException e) {
+				throw new RuntimeException("SHA-256 is required to be supported by MessageDigest", e);
 			} catch (EntityExistsException e) {
-				userTransaction.rollback();
 				throw new IcatException(IcatException.IcatExceptionType.OBJECT_ALREADY_EXISTS, e.getMessage());
-			} catch (Throwable e) {
+			} catch (PersistenceException e) {
 				userTransaction.rollback();
-				logger.trace("Transaction rolled back for creation of " + clone + " because of " + e.getClass() + " "
-						+ e.getMessage());
-				updateCache();
+				logger.trace("Transaction rolled back for creation of {}", clone, e);
+
 				bean.preparePersist(userId, entityManager, PersistMode.CLONE);
 				isUnique(clone);
 				isValid(clone);
-				logger.error("Database unhappy", e);
-				throw new IcatException(IcatException.IcatExceptionType.INTERNAL,
-						"Unexpected DB response " + e.getClass() + " " + e.getMessage());
+
+				logger.error("Database error", e);
+				throw new IcatException(IcatException.IcatExceptionType.INTERNAL, "Database error: " + e.getMessage());
+			} finally {
+				if (userTransaction.getStatus() != Status.STATUS_NO_TRANSACTION) {
+					userTransaction.rollback();
+				}
 			}
-		} catch (IllegalStateException | SecurityException | SystemException e) {
-			throw new IcatException(IcatException.IcatExceptionType.INTERNAL,
-					e.getClass().getSimpleName() + e.getMessage());
+		} catch (HeuristicMixedException | HeuristicRollbackException | NotSupportedException | RollbackException | SystemException e) {
+			logger.error("Transaction error", e);
+			throw new IcatException(IcatException.IcatExceptionType.INTERNAL, "Transaction error: " + e.getMessage());
 		}
 
 		/*
@@ -2468,7 +2453,7 @@ public class EntityBeanManager {
 									} else {
 										fieldAndMethod.getValue().invoke(subClone, value);
 									}
-								} catch (Exception e) {
+								} catch (ReflectiveOperationException e) {
 									throw new IcatException(IcatException.IcatExceptionType.INTERNAL, "" + e);
 								}
 							}
@@ -2479,7 +2464,7 @@ public class EntityBeanManager {
 							back.invoke(subClone, clone);
 						}
 					}
-				} catch (Exception e) {
+				} catch (ReflectiveOperationException e) {
 					throw new IcatException(IcatExceptionType.INTERNAL, e.getClass() + " " + e.getMessage());
 				}
 			}

@@ -527,11 +527,6 @@ public class GateKeeper {
 		msgs.put(key, f);
 	}
 
-	public void updateCache() throws JMSException {
-		requestUpdatePublicTables();
-		requestUpdatePublicSteps();
-	}
-
 	public void updatePublicSteps() {
 		publicSteps = gateKeeperHelper.getPublicSteps();
 		publicStepsStale = false;

@@ -1,7 +1,5 @@
 package org.icatproject.core.entity;
 
-import java.io.ByteArrayOutputStream;
-import java.io.PrintStream;
 import java.io.Serializable;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
@@ -95,8 +93,9 @@ public abstract class EntityBaseBean implements HasEntityId, Serializable {
 							bean.addToSearch(entityManager, searchManager);
 						}
 					}
-				} catch (Exception e) {
-					throw new IcatException(IcatExceptionType.INTERNAL, e.getMessage());
+				} catch (ReflectiveOperationException e) {
+					logger.error("ReflectiveOperationException", e);
+					throw new IcatException(IcatExceptionType.INTERNAL, e.toString());
 				}
 			}
 
@@ -174,9 +173,9 @@ public abstract class EntityBaseBean implements HasEntityId, Serializable {
 				}
 			}
 
-		} catch (Exception e) {
-			reportUnexpected(e);
-			throw new IcatException(IcatException.IcatExceptionType.INTERNAL, "" + e);
+		} catch (ReflectiveOperationException e) {
+			logger.error("ReflectiveOperationException", e);
+			throw new IcatException(IcatException.IcatExceptionType.INTERNAL, e.toString());
 		}
 
 	}
@@ -316,8 +315,9 @@ public abstract class EntityBaseBean implements HasEntityId, Serializable {
 							rev.invoke(bean, this);
 						}
 					}
-				} catch (Exception e) {
-					throw new IcatException(IcatExceptionType.INTERNAL, e.getClass() + " " + e.getMessage());
+				} catch (ReflectiveOperationException e) {
+					logger.error("ReflectiveOperationException", e);
+					throw new IcatException(IcatExceptionType.INTERNAL, e.toString());
 				}
 			}
 		}
@@ -387,17 +387,10 @@ public abstract class EntityBaseBean implements HasEntityId, Serializable {
 				}
 			}
 			return clone;
-		} catch (Exception e) {
-			reportUnexpected(e);
-			throw new IcatException(IcatException.IcatExceptionType.INTERNAL, "" + e);
+		} catch (ReflectiveOperationException e) {
+			logger.error("ReflectiveOperationException", e);
+			throw new IcatException(IcatException.IcatExceptionType.INTERNAL, e.toString());
 		}
-
-	}
-
-	private void reportUnexpected(Throwable e) {
-		ByteArrayOutputStream baos = new ByteArrayOutputStream();
-		e.printStackTrace(new PrintStream(baos));
-		logger.error("Internal exception: " + baos);
 	}
 
 	public void setCreateId(String createId) {

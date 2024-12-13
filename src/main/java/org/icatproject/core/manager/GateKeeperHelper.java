@@ -22,7 +22,7 @@ import org.icatproject.core.entity.Rule;
  * made in that transaction.
  */
 @ApplicationScoped
-@Transactional(TxType.NOT_SUPPORTED)
+@Transactional(TxType.REQUIRES_NEW)
 public class GateKeeperHelper {
 
 	@PersistenceContext(unitName = "icat")

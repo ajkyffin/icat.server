@@ -79,6 +79,7 @@ public class WSession {
 
 			try {
 				icatService = new ICATService(icatUrl, new QName("http://icatproject.org", "ICATService"));
+				break;
 			} catch (WebServiceException e) {
 				Throwable cause = e.getCause();
 				if (cause != null && cause.getMessage().contains("security")) {

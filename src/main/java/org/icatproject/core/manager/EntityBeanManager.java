@@ -496,13 +496,13 @@ public class EntityBeanManager {
 					offset++;
 				}
 
-				userTransaction.commit();
-
 				if (searchActive) {
 					for (EntityBaseBean bean : allBeansToDelete) {
 						searchManager.deleteDocument(bean);
 					}
 				}
+
+				userTransaction.commit();
 
 				if (logRequests.contains(CallType.WRITE) && firstBean != null) {
 					ByteArrayOutputStream baos = new ByteArrayOutputStream();
@@ -1088,10 +1088,6 @@ public class EntityBeanManager {
 		return new EntitySetResult(q, result);
 	}
 
-	public List<String> getProperties() {
-		return propertyHandler.props();
-	}
-
 	private String getRep(Field field, Object value) throws IcatException {
 		String type = field.getType().getSimpleName();
 		if (type.equals("String")) {
@@ -1257,6 +1253,13 @@ public class EntityBeanManager {
 				throw new IcatException(IcatException.IcatExceptionType.INTERNAL, e.getClass() + " " + e.getMessage());
 			}
 			query = query.setParameter(f.getName(), value);
+
+			//TODO: explain this
+			if (value instanceof EntityBaseBean) {
+				if (((EntityBaseBean)value).getId() == null) {
+					return null;
+				}
+			}
 		}
 		logger.debug("Looking up with " + queryString + ")");
 		List<EntityBaseBean> results = query.getResultList();
@@ -1933,7 +1936,7 @@ public class EntityBeanManager {
 				entityManager.flush();
 				logger.trace("Updated bean " + bean + " flushed.");
 				NotificationMessage notification = new NotificationMessage(Operation.U, bean, notificationRequests);
-				userTransaction.commit();
+
 				if (logRequests.contains(CallType.WRITE)) {
 					ByteArrayOutputStream baos = new ByteArrayOutputStream();
 					try (JsonGenerator gen = Json.createGenerator(baos).writeStartObject()) {
@@ -1947,6 +1950,9 @@ public class EntityBeanManager {
 				if (searchActive) {
 					searchManager.updateDocument(entityManager, beanManaged);
 				}
+
+				userTransaction.commit();
+
 				return notification;
 			} catch (PersistenceException e) {
 				userTransaction.rollback();
@@ -2004,7 +2010,6 @@ public class EntityBeanManager {
 						beanIds.add(bean.getId());
 					}
 				}
-				userTransaction.commit();
 
 				/*
 				 * Nothing should be able to go wrong now so log, update
@@ -2041,6 +2046,8 @@ public class EntityBeanManager {
 						searchManager.updateDocument(entityManager, eb);
 					}
 				}
+
+				userTransaction.commit();
 
 				try {
 					for (EntityBaseBean eb : creates) {
@@ -2240,17 +2247,26 @@ public class EntityBeanManager {
 		logger.info("{} cloning {}/{}", userId, beanName, id);
 
 		Class<? extends EntityBaseBean> klass = EntityInfoHandler.getClass(beanName);
-		EntityBaseBean bean = entityManager.find(klass, id);
+
+		EntityBaseBean bean = null;
+		EntityBaseBean clone = null;
+		Map<EntityBaseBean, EntityBaseBean> clonedTo = new HashMap<>();
+
+		try {
+			try {
+				userTransaction.begin();
+
+		bean = entityManager.find(klass, id);
 		if (bean == null) {
 			throw new IcatException(IcatExceptionType.NO_SUCH_OBJECT_FOUND, beanName + ":" + id);
 		}
-		EntityBaseBean clone = null;
+
 		try {
 			clone = klass.getDeclaredConstructor().newInstance();
 		} catch (ReflectiveOperationException e) {
 			throw new IcatException(IcatExceptionType.INTERNAL, "failed to instantiate " + beanName);
 		}
-		Map<EntityBaseBean, EntityBaseBean> clonedTo = new HashMap<>();
+
 		clonedTo.put(bean, clone);
 		Map<Field, Method> setters = EntityInfoHandler.getSettersForUpdate(klass);
 		Map<Field, Method> getters = EntityInfoHandler.getGetters(klass);
@@ -2314,9 +2330,6 @@ public class EntityBeanManager {
 		clone.preparePersist(userId, entityManager, PersistMode.CLONE);
 		logger.trace(clone + " prepared for persist.");
 
-		try {
-			try {
-				userTransaction.begin();
 				entityManager.persist(clone);
 				entityManager.flush();
 				logger.trace(clone + " flushed.");
@@ -2340,6 +2353,28 @@ public class EntityBeanManager {
 								}
 							}
 						}
+					}
+				}
+
+				/*
+				* Nothing should be able to go wrong now so log, update and send
+				* notification messages
+				*/
+				if (logRequests.contains(CallType.WRITE)) {
+					ByteArrayOutputStream baos = new ByteArrayOutputStream();
+
+					try (JsonGenerator gen = Json.createGenerator(baos).writeStartObject()) {
+						gen.write("userName", userId);
+						gen.write("entityName", clone.getClass().getSimpleName());
+						gen.write("entityId", clone.getId());
+						gen.writeEnd();
+					}
+					transmitter.processMessage("write", ip, baos.toString(), startMillis);
+				}
+
+				if (searchActive) {
+					for (EntityBaseBean c : clonedTo.values()) {
+						searchManager.addDocument(entityManager, c);
 					}
 				}
 
@@ -2367,28 +2402,6 @@ public class EntityBeanManager {
 		} catch (HeuristicMixedException | HeuristicRollbackException | NotSupportedException | RollbackException | SystemException e) {
 			logger.error("Transaction error", e);
 			throw new IcatException(IcatException.IcatExceptionType.INTERNAL, "Transaction error: " + e.getMessage());
-		}
-
-		/*
-		 * Nothing should be able to go wrong now so log, update and send
-		 * notification messages
-		 */
-		if (logRequests.contains(CallType.WRITE)) {
-			ByteArrayOutputStream baos = new ByteArrayOutputStream();
-
-			try (JsonGenerator gen = Json.createGenerator(baos).writeStartObject()) {
-				gen.write("userName", userId);
-				gen.write("entityName", clone.getClass().getSimpleName());
-				gen.write("entityId", clone.getId());
-				gen.writeEnd();
-			}
-			transmitter.processMessage("write", ip, baos.toString(), startMillis);
-		}
-
-		if (searchActive) {
-			for (EntityBaseBean c : clonedTo.values()) {
-				searchManager.addDocument(entityManager, c);
-			}
 		}
 
 		for (EntityBaseBean c : clonedTo.values()) {

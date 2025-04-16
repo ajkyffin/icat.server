@@ -20,7 +20,6 @@ import jakarta.annotation.PostConstruct;
 import jakarta.annotation.PreDestroy;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
-import jakarta.jms.JMSException;
 import jakarta.json.JsonObject;
 import jakarta.json.JsonValue;
 import jakarta.persistence.EntityManager;
@@ -483,7 +482,7 @@ public class GateKeeper {
 	}
 
 	/** Do it locally and send requests to other icats */
-	public void requestUpdatePublicSteps() throws JMSException {
+	public void requestUpdatePublicSteps() {
 		markPublicStepsStale();
 		for (Entry<String, String> entry : cluster.entrySet()) {
 			sendMsg(entry.getValue(), "gatekeeper/markPublicStepsStale");

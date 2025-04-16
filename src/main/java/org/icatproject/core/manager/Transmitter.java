@@ -23,6 +23,10 @@ public class Transmitter {
 	Topic topic;
 
 	public void processMessage(String operation, String ip, String body, long startMillis) {
+		if (connectionFactory == null) {
+			return;
+		}
+
 		try (JMSContext context = connectionFactory.createContext(JMSContext.AUTO_ACKNOWLEDGE)) {
 			TextMessage jmsg = context.createTextMessage(body);
 			jmsg.setStringProperty("operation", operation);

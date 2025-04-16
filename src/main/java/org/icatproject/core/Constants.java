@@ -10,9 +10,9 @@ public class Constants {
 
 	public static final String ENUMPREFIX = "org.icatproject.";
 
-	public static String API_VERSION;
+	public static String API_VERSION = "6.1.0-SNAPSHOT";
 
-	static {
+/*	static {
 
 		InputStream inputStream = Constants.class.getClassLoader().getResourceAsStream(
 				"app.properties");
@@ -26,5 +26,5 @@ public class Constants {
 		}
 
 	}
-
+*/
 }

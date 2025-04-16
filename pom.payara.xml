@@ -120,13 +120,13 @@
 		<dependency>
 			<groupId>org.icatproject</groupId>
 			<artifactId>icat.utils</artifactId>
-			<version>4.17.0</version>
+			<version>4.17.0-SNAPSHOT</version>
 		</dependency>
 
 		<dependency>
 			<groupId>org.icatproject</groupId>
 			<artifactId>icat.client</artifactId>
-			<version>6.1.0</version>
+			<version>6.1.0-SNAPSHOT</version>
 			<scope>test</scope>
 		</dependency>
 
@@ -142,6 +142,19 @@
 			<version>4.5.13</version>
 		</dependency>
 
+		<!-- Inclding these is horrendous but miredot doesn't allow excluding any source files so... -->
+		<dependency>
+			<groupId>org.hibernate.orm</groupId>
+			<artifactId>hibernate-core</artifactId>
+			<version>6.6.3.Final</version>
+			<scope>provided</scope>
+		</dependency>
+		<dependency>
+			<groupId>io.quarkus</groupId>
+			<artifactId>quarkus-core</artifactId>
+			<version>3.17.4</version>
+			<scope>provided</scope>
+		</dependency>
 	</dependencies>
 
 	<build>
@@ -286,6 +299,7 @@
 					<release>11</release>
 					<excludes>
 						<exclude>**/ICAT_CDI.java</exclude>
+						<exclude>**/quarkus/**</exclude>
 					</excludes>
 				</configuration>
 			</plugin>

@@ -24,6 +24,10 @@ public class NotificationTransmitter {
 	Topic topic;
 
 	public void processMessage(NotificationMessage notificationMessage) throws JMSException {
+		if (connectionFactory == null) {
+			return;
+		}
+
 		Message message = notificationMessage.getMessage();
 		if (message != null) {
 			try (JMSContext context = connectionFactory.createContext(JMSContext.AUTO_ACKNOWLEDGE)) {

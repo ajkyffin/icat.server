@@ -4,6 +4,7 @@ import java.net.InetAddress;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.net.UnknownHostException;
+import java.nio.file.FileSystems;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -21,11 +22,10 @@ import jakarta.enterprise.context.ApplicationScoped;
 
 import javax.naming.InitialContext;
 
+import org.eclipse.microprofile.config.ConfigProvider;
 import org.icatproject.authentication.Authenticator;
 import org.icatproject.core.IcatException;
 import org.icatproject.core.manager.search.SearchManager;
-import org.icatproject.utils.CheckedProperties;
-import org.icatproject.utils.CheckedProperties.CheckedPropertyException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.slf4j.Marker;
@@ -46,6 +46,7 @@ public class PropertyHandler {
 		C, U
 	}
 
+	private static final String PREFIX = "icat.";
 	private final static Logger logger = LoggerFactory.getLogger(PropertyHandler.class);
 	private final static Marker fatal = MarkerFactory.getMarker("FATAL");
 	private final static Pattern cuPattern = Pattern.compile("[CU]*");
@@ -87,7 +88,6 @@ public class PropertyHandler {
 	private int maxIdsInQuery;
 	private long importCacheSize;
 	private long exportCacheSize;
-	private String jmsTopicConnectionFactory;
 	private String digestKey;
 	private SearchEngine searchEngine;
 	private List<URL> searchUrls = new ArrayList<>();
@@ -107,28 +107,24 @@ public class PropertyHandler {
 
 	@PostConstruct
 	void init() {
-		CheckedProperties props = new CheckedProperties();
-		try {
-			props.loadFromResource("run.properties");
-			logger.info("Property file run.properties loaded");
 			String key;
 
 			/* The authn.list */
-			String authnList = props.getString("authn.list");
+			String authnList = getString("authn.list");
 			formattedProps.add("authn.list " + authnList);
 
 			for (String mnemonic : authnList.split("\\s+")) {
 				Authenticator authen = null;
 				String keyJndi = "authn." + mnemonic + ".jndi";
 				String keyUrl = "authn." + mnemonic + ".url";
-				if (props.has(keyJndi) && props.has(keyUrl)) {
+				if (has(keyJndi) && has(keyUrl)) {
 					abend("Both " + keyJndi + " and " + keyUrl + " have been specified in run.properties");
 				}
-				if (props.has(keyJndi)) {
-					String jndi = props.getString(keyJndi);
+				if (has(keyJndi)) {
+					String jndi = getString(keyJndi);
 					formattedProps.add(keyJndi + " " + jndi);
 					String hpKey = "authn." + mnemonic + ".hostPort";
-					if (props.has(hpKey)) {
+					if (has(hpKey)) {
 						abend("Key  '" + hpKey + " specified in run.properties is no longer permitted");
 					}
 					try {
@@ -138,7 +134,7 @@ public class PropertyHandler {
 					}
 					logger.debug("Found Authenticator: " + mnemonic + " with jndi " + jndi);
 				} else {
-					String urls = props.getString(keyUrl);
+					String urls = getString(keyUrl);
 					try {
 						authen = new RestAuthenticator(mnemonic, urls);
 					} catch (IcatException e) {
@@ -149,14 +145,14 @@ public class PropertyHandler {
 
 				key = "authn." + mnemonic + ".friendly";
 				String friendly = null;
-				if (props.has(key)) {
-					friendly = props.getString(key);
+				if (has(key)) {
+					friendly = getString(key);
 					formattedProps.add(key + " " + friendly);
 				}
 
 				key = "authn." + mnemonic + ".admin";
-				boolean admin = props.getBoolean(key, false);
-				if (props.has(key)) {
+				boolean admin = getBoolean(key, false);
+				if (has(key)) {
 					formattedProps.add(key + " " + admin);
 				}
 
@@ -166,11 +162,11 @@ public class PropertyHandler {
 			}
 
 			/* lifetimeMinutes */
-			lifetimeMinutes = props.getPositiveInt("lifetimeMinutes");
+			lifetimeMinutes = getPositiveInt("lifetimeMinutes");
 			formattedProps.add("lifetimeMinutes " + lifetimeMinutes);
 
 			/* rootUserNames */
-			String names = props.getString("rootUserNames");
+			String names = getString("rootUserNames");
 			for (String name : names.split("\\s+")) {
 				rootUserNames.add(name);
 			}
@@ -178,8 +174,8 @@ public class PropertyHandler {
 
 			/* entitiesToIndex */
 			key = "search.entitiesToIndex";
-			if (props.has(key)) {
-				String indexableEntities = props.getString(key);
+			if (has(key)) {
+				String indexableEntities = getString(key);
 				for (String indexableEntity : indexableEntities.split("\\s+")) {
 					entitiesToIndex.add(indexableEntity);
 				}
@@ -201,8 +197,8 @@ public class PropertyHandler {
 
 			/* notification.list */
 			key = "notification.list";
-			if (props.has(key)) {
-				String notificationList = props.getString(key);
+			if (has(key)) {
+				String notificationList = getString(key);
 				formattedProps.add(key + " " + notificationList);
 
 				for (String entity : notificationList.split("\\s+")) {
@@ -214,7 +210,7 @@ public class PropertyHandler {
 						throw new IllegalStateException(msg);
 					}
 					key = "notification." + entity;
-					String notificationOps = props.getString(key);
+					String notificationOps = getString(key);
 
 					formattedProps.add(key + " " + notificationOps);
 
@@ -238,8 +234,8 @@ public class PropertyHandler {
 
 			/* Call logging categories */
 			key = "log.list";
-			if (props.has(key)) {
-				String callLogs = props.getString(key);
+			if (has(key)) {
+				String callLogs = getString(key);
 				formattedProps.add(key + " " + callLogs);
 				for (String callTypeString : callLogs.split("\\s+")) {
 					try {
@@ -257,16 +253,16 @@ public class PropertyHandler {
 			}
 
 			/* Search Host */
-			if (props.has("search.engine")) {
+			if (has("search.engine")) {
 				try {
-					searchEngine = SearchEngine.valueOf(props.getString("search.engine").toUpperCase());
+					searchEngine = SearchEngine.valueOf(getString("search.engine").toUpperCase());
 				} catch (IllegalArgumentException e) {
-					String msg = "Value " + props.getString("search.engine") + " of search.engine must be chosen from "
+					String msg = "Value " + getString("search.engine") + " of search.engine must be chosen from "
 							+ Arrays.asList(SearchEngine.values());
 					throw new IllegalStateException(msg);
 				}
 
-				for (String urlString : props.getString("search.urls").split("\\s+")) {
+				for (String urlString : getString("search.urls").split("\\s+")) {
 					try {
 						searchUrls.add(new URL(urlString));
 					} catch (MalformedURLException e) {
@@ -284,13 +280,13 @@ public class PropertyHandler {
 				formattedProps.add("search.urls" + " " + searchUrls.toString());
 				logger.info("Using {} as search engine with url(s) {}", searchEngine, searchUrls);
 
-				searchPopulateBlockSize = props.getPositiveInt("search.populateBlockSize");
+				searchPopulateBlockSize = getPositiveInt("search.populateBlockSize");
 				formattedProps.add("search.populateBlockSize" + " " + searchPopulateBlockSize);
 
-				searchSearchBlockSize = props.getPositiveInt("search.searchBlockSize");
+				searchSearchBlockSize = getPositiveInt("search.searchBlockSize");
 				formattedProps.add("search.searchBlockSize" + " " + searchSearchBlockSize);
 
-				searchDirectory = props.getPath("search.directory");
+				searchDirectory = FileSystems.getDefault().getPath(getString("search.directory"));
 				if (!searchDirectory.toFile().isDirectory()) {
 					String msg = searchDirectory + " is not a directory";
 					logger.error(fatal, msg);
@@ -298,50 +294,50 @@ public class PropertyHandler {
 				}
 				formattedProps.add("search.directory" + " " + searchDirectory);
 
-				searchBacklogHandlerIntervalMillis = props.getPositiveLong("search.backlogHandlerIntervalSeconds");
+				searchBacklogHandlerIntervalMillis = getPositiveLong("search.backlogHandlerIntervalSeconds");
 				formattedProps.add("search.backlogHandlerIntervalSeconds" + " " + searchBacklogHandlerIntervalMillis);
 				searchBacklogHandlerIntervalMillis *= 1000;
 
-				searchEnqueuedRequestIntervalMillis = props.getPositiveLong("search.enqueuedRequestIntervalSeconds");
+				searchEnqueuedRequestIntervalMillis = getPositiveLong("search.enqueuedRequestIntervalSeconds");
 				formattedProps.add("search.enqueuedRequestIntervalSeconds" + " " + searchEnqueuedRequestIntervalMillis);
 				searchEnqueuedRequestIntervalMillis *= 1000;
 
-				searchAggregateFilesIntervalMillis = props.getNonNegativeLong("search.aggregateFilesIntervalSeconds");
+				searchAggregateFilesIntervalMillis = getNonNegativeLong("search.aggregateFilesIntervalSeconds");
 				searchAggregateFilesIntervalMillis *= 1000;
 
-				searchMaxSearchTimeMillis = props.getPositiveLong("search.maxSearchTimeSeconds");
+				searchMaxSearchTimeMillis = getPositiveLong("search.maxSearchTimeSeconds");
 				formattedProps.add("search.maxSearchTimeSeconds" + " " + searchMaxSearchTimeMillis);
 				searchMaxSearchTimeMillis *= 1000;
 			} else {
 				logger.info("'search.engine' entry not present so no free text search available");
 			}
 
-			unitAliasOptions = props.getString("units", "");
+			unitAliasOptions = getString("units", "");
 
 			/*
 			 * maxEntities, importCacheSize, exportCacheSize, maxIdsInQuery, key
 			 */
-			maxEntities = props.getPositiveInt("maxEntities");
+			maxEntities = getPositiveInt("maxEntities");
 			formattedProps.add("maxEntities " + maxEntities);
 
-			importCacheSize = props.getPositiveLong("importCacheSize");
+			importCacheSize = getPositiveLong("importCacheSize");
 			formattedProps.add("importCacheSize " + importCacheSize);
 
-			exportCacheSize = props.getPositiveLong("exportCacheSize");
+			exportCacheSize = getPositiveLong("exportCacheSize");
 			formattedProps.add("exportCacheSize " + exportCacheSize);
 
-			maxIdsInQuery = props.getPositiveInt("maxIdsInQuery");
+			maxIdsInQuery = getPositiveInt("maxIdsInQuery");
 			formattedProps.add("maxIdsInQuery " + maxIdsInQuery);
 
-			if (props.has("key")) {
-				digestKey = props.getString("key");
+			if (has("key")) {
+				digestKey = getString("key");
 				formattedProps.add("key " + digestKey);
 				logger.info("Key is " + (digestKey == null ? "not set" : "set"));
 			}
 
 			key = "cluster";
-			if (props.has(key)) {
-				String clusterString = props.getString(key);
+			if (has(key)) {
+				String clusterString = getString(key);
 				formattedProps.add(key + " " + clusterString);
 				cluster = new HashMap<>();
 				for (String urlString : clusterString.split("\\s+")) {
@@ -376,46 +372,91 @@ public class PropertyHandler {
 				}
 			}
 
-			/* JMS stuff */
-			jmsTopicConnectionFactory = props.getString("jms.topicConnectionFactory",
-					"java:comp/DefaultJMSConnectionFactory");
-			formattedProps.add("jms.topicConnectionFactory " + jmsTopicConnectionFactory);
-
 			key = "search.indexBatchSize";
-			if (props.has(key)) {
-				searchIndexBatchSize = props.getPositiveInt(key);
+			if (has(key)) {
+				searchIndexBatchSize = getPositiveInt(key);
 				formattedProps.add("search.indexBatchSize " + searchIndexBatchSize);
 			} else {
 				searchIndexBatchSize = SearchManager.DEFAULT_INDEX_BATCH_SIZE;
 			}
 
 			key = "search.indexBatchesPerTimer";
-			if (props.has(key)) {
-				searchIndexBatchesPerTimer = props.getPositiveInt(key);
+			if (has(key)) {
+				searchIndexBatchesPerTimer = getPositiveInt(key);
 				formattedProps.add("search.indexBatchesPerTimer " + searchIndexBatchesPerTimer);
 			} else {
 				searchIndexBatchesPerTimer = SearchManager.DEFAULT_INDEX_BATCHES_PER_TIMER;
 			}
 
 			key = "search.backlogLinesPerTimer";
-			if (props.has(key)) {
-				searchBacklogLinesPerTimer = props.getPositiveInt(key);
+			if (has(key)) {
+				searchBacklogLinesPerTimer = getPositiveInt(key);
 				formattedProps.add("search.backlogLinesPerTimer " + searchBacklogLinesPerTimer);
 			} else {
 				searchBacklogLinesPerTimer = SearchManager.DEFAULT_BACKLOG_LINES_PER_TIMER;
 			}
 
 			key = "search.queueFileMaxSize";
-			if (props.has(key)) {
-				searchQueueFileMaxSize = props.getPositiveLong(key);
+			if (has(key)) {
+				searchQueueFileMaxSize = getPositiveLong(key);
 				formattedProps.add("search.queueFileMaxSize " + searchQueueFileMaxSize);
 			} else {
 				searchQueueFileMaxSize = SearchManager.DEFAULT_QUEUE_FILE_MAX_SIZE;
 			}
-		} catch (CheckedPropertyException e) {
-			abend(e.getMessage());
+	}
+
+	private boolean has(String key) {
+		return ConfigProvider.getConfig().getOptionalValue(PREFIX + key, String.class).isPresent();
+	}
+
+	private String getString(String key) {
+		return ConfigProvider.getConfig().getValue(PREFIX + key, String.class);
+	}
+
+	private String getString(String key, String defaultValue) {
+		return ConfigProvider.getConfig().getOptionalValue(PREFIX + key, String.class).orElse(defaultValue);
+	}
+
+	private boolean getBoolean(String key, boolean defaultValue) {
+		return ConfigProvider.getConfig().getOptionalValue(PREFIX + key, Boolean.class).orElse(defaultValue);
+	}
+
+	private int getInt(String key) {
+		return ConfigProvider.getConfig().getValue(PREFIX + key, Integer.class);
+	}
+
+	private int getPositiveInt(String key) {
+		int value = getInt(key);
+
+		if (value < 1) {
+			throw new IllegalArgumentException(key + " must be a positive integer: " + value);
 		}
 
+		return value;
+	}
+
+	private long getLong(String key) {
+		return ConfigProvider.getConfig().getValue("icat." + key, Long.class);
+	}
+
+	private long getPositiveLong(String key) {
+		long value = getLong(key);
+
+		if (value < 1) {
+			throw new IllegalArgumentException(key + " must be a positive integer: " + value);
+		}
+
+		return value;
+	}
+
+	private long getNonNegativeLong(String key) {
+		long value = getLong(key);
+
+		if (value < 0) {
+			throw new IllegalArgumentException(key + " must be a non-negative integer: " + value);
+		}
+
+		return value;
 	}
 
 	public Map<String, String> getCluster() {

@@ -6,7 +6,6 @@ import java.io.StringReader;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -93,122 +92,105 @@ public class OpensearchApi extends SearchApi {
 									.add("possessive_english").add("lowercase").add("porter_stem")))
 					.add("default_search", Json.createObjectBuilder()
 							.add("tokenizer", "classic").add("filter", Json.createArrayBuilder()
-									.add("possessive_english").add("lowercase").add("porter_stem").add("synonym"))))
+									.add("possessive_english").add("lowercase").add("porter_stem")/*.add("synonym")*/)))
 			.add("filter", Json.createObjectBuilder()
-					.add("synonym", Json.createObjectBuilder()
-							.add("type", "synonym").add("synonyms_path", "synonym.txt"))
+					/* .add("synonym", Json.createObjectBuilder()
+							.add("type", "synonym").add("synonyms_path", "synonym.txt")) */ //WTF is a synonym.txt?
 					.add("possessive_english", Json.createObjectBuilder()
 							.add("type", "stemmer").add("langauge", "possessive_english"))))
 			.build();
-	private static Map<String, List<ParentRelation>> relations = new HashMap<>();
-	private static Map<String, List<String>> defaultFieldsMap = new HashMap<>();
-	private static Map<String, List<String>> defaultFacetsMap = new HashMap<>();
-	protected static final Set<String> indices = new HashSet<>(
-			Arrays.asList("datafile", "dataset", "investigation", "instrumentscientist"));
 
-	static {
+	private static final Map<String, List<ParentRelation>> relations = Map.ofEntries(
 		// Non-nested children have a one to one relationship with an indexed entity and
 		// so do not form an array, and update specific fields by query
-		relations.put("datafileformat", Arrays.asList(
-				new ParentRelation(RelationType.CHILD, "datafile", "datafileFormat", DatafileFormat.docFields)));
-		relations.put("datasettype", Arrays.asList(
-				new ParentRelation(RelationType.CHILD, "dataset", "type", DatasetType.docFields)));
-		relations.put("investigationtype", Arrays.asList(
-				new ParentRelation(RelationType.CHILD, "investigation", "type", InvestigationType.docFields)));
-		relations.put("facility", Arrays.asList(
-				new ParentRelation(RelationType.CHILD, "investigation", "facility", Facility.docFields)));
-		relations.put("investigation", Arrays.asList(
-				new ParentRelation(RelationType.CHILD, "dataset", "investigation",
-						new HashSet<>(Arrays.asList("investigation.name", "investigation.id", "investigation.startDate",
-								"investigation.title"))),
-				new ParentRelation(RelationType.CHILD, "datafile", "investigation",
-						new HashSet<>(Arrays.asList("investigation.name", "investigation.id")))));
-		relations.put("dataset", Arrays.asList(
-				new ParentRelation(RelationType.CHILD, "datafile", "dataset",
-						new HashSet<>(Arrays.asList("dataset.name", "dataset.id", "sample.id")))));
-		relations.put("user", Arrays.asList(
-				new ParentRelation(RelationType.CHILD, "instrumentscientist", "user", User.docFields),
-				new ParentRelation(RelationType.NESTED_GRANDCHILD, "investigation", "investigationuser",
-						User.docFields),
-				new ParentRelation(RelationType.NESTED_GRANDCHILD, "dataset", "investigationuser", User.docFields),
-				new ParentRelation(RelationType.NESTED_GRANDCHILD, "datafile", "investigationuser", User.docFields)));
-		relations.put("sample", Arrays.asList(
-				new ParentRelation(RelationType.CHILD, "dataset", "sample", Sample.docFields),
-				new ParentRelation(RelationType.CHILD, "datafile", "sample", Sample.docFields),
-				new ParentRelation(RelationType.NESTED_CHILD, "investigation", "investigation", null)));
-		relations.put("sampletype", Arrays.asList(
-				new ParentRelation(RelationType.CHILD, "dataset", "sample.type", SampleType.docFields),
-				new ParentRelation(RelationType.CHILD, "datafile", "sample.type", SampleType.docFields),
-				new ParentRelation(RelationType.NESTED_GRANDCHILD, "investigation", "sample", SampleType.docFields)));
+		Map.entry("datafileformat", List.of(
+			new ParentRelation(RelationType.CHILD, "datafile", "datafileFormat", DatafileFormat.docFields))),
+		Map.entry("datasettype", List.of(
+			new ParentRelation(RelationType.CHILD, "dataset", "type", DatasetType.docFields))),
+		Map.entry("investigationtype", List.of(
+			new ParentRelation(RelationType.CHILD, "investigation", "type", InvestigationType.docFields))),
+		Map.entry("facility", List.of(
+			new ParentRelation(RelationType.CHILD, "investigation", "facility", Facility.docFields))),
+		Map.entry("investigation", List.of(
+			new ParentRelation(RelationType.CHILD, "dataset", "investigation", Set.of("investigation.name", "investigation.id", "investigation.startDate", "investigation.title")),
+			new ParentRelation(RelationType.CHILD, "datafile", "investigation", Set.of("investigation.name", "investigation.id")))),
+		Map.entry("dataset",  List.of(
+			new ParentRelation(RelationType.CHILD, "datafile", "dataset", Set.of("dataset.name", "dataset.id", "sample.id")))),
+		Map.entry("user", List.of(
+			new ParentRelation(RelationType.CHILD, "instrumentscientist", "user", User.docFields),
+			new ParentRelation(RelationType.NESTED_GRANDCHILD, "investigation", "investigationuser", User.docFields),
+			new ParentRelation(RelationType.NESTED_GRANDCHILD, "dataset", "investigationuser", User.docFields),
+			new ParentRelation(RelationType.NESTED_GRANDCHILD, "datafile", "investigationuser", User.docFields))),
+		Map.entry("sample", List.of(
+			new ParentRelation(RelationType.CHILD, "dataset", "sample", Sample.docFields),
+			new ParentRelation(RelationType.CHILD, "datafile", "sample", Sample.docFields),
+			new ParentRelation(RelationType.NESTED_CHILD, "investigation", "investigation", null))),
+		Map.entry("sampletype", List.of(
+			new ParentRelation(RelationType.CHILD, "dataset", "sample.type", SampleType.docFields),
+			new ParentRelation(RelationType.CHILD, "datafile", "sample.type", SampleType.docFields),
+			new ParentRelation(RelationType.NESTED_GRANDCHILD, "investigation", "sample", SampleType.docFields))),
 
 		// Nested children are indexed as an array of objects on their parent entity,
 		// and know their parent's id (N.B. InvestigationUsers are also mapped to
 		// Datasets and Datafiles, but using the investigation.id field)
-		relations.put("datafileparameter", Arrays.asList(
-				new ParentRelation(RelationType.NESTED_CHILD, "datafile", "datafile", null)));
-		relations.put("datasetparameter", Arrays.asList(
-				new ParentRelation(RelationType.NESTED_CHILD, "dataset", "dataset", null)));
-		relations.put("datasettechnique", Arrays.asList(
-				new ParentRelation(RelationType.NESTED_CHILD, "dataset", "dataset", null)));
-		relations.put("investigationparameter", Arrays.asList(
-				new ParentRelation(RelationType.NESTED_CHILD, "investigation", "investigation", null)));
-		relations.put("sampleparameter", Arrays.asList(
-				new ParentRelation(RelationType.NESTED_CHILD, "investigation", "sample", null), // Must be first
-				new ParentRelation(RelationType.NESTED_CHILD, "dataset", "sample", null),
-				new ParentRelation(RelationType.NESTED_CHILD, "datafile", "sample", null)));
-		relations.put("investigationuser", Arrays.asList(
-				new ParentRelation(RelationType.NESTED_CHILD, "investigation", "investigation", null),
-				new ParentRelation(RelationType.NESTED_CHILD, "dataset", "investigation", null),
-				new ParentRelation(RelationType.NESTED_CHILD, "datafile", "investigation", null)));
-		relations.put("investigationinstrument", Arrays.asList(
-				new ParentRelation(RelationType.NESTED_CHILD, "investigation", "investigation", null),
-				new ParentRelation(RelationType.NESTED_CHILD, "dataset", "investigation", null),
-				new ParentRelation(RelationType.NESTED_CHILD, "datafile", "investigation", null)));
-		relations.put("investigationfacilitycycle", Arrays.asList(
-				new ParentRelation(RelationType.NESTED_CHILD, "investigation", "investigation", null),
-				new ParentRelation(RelationType.NESTED_CHILD, "dataset", "investigation", null),
-				new ParentRelation(RelationType.NESTED_CHILD, "datafile", "investigation", null)));
+		Map.entry("datafileparameter", List.of(
+			new ParentRelation(RelationType.NESTED_CHILD, "datafile", "datafile", null))),
+		Map.entry("datasetparameter", List.of(
+			new ParentRelation(RelationType.NESTED_CHILD, "dataset", "dataset", null))),
+		Map.entry("datasettechnique", List.of(
+			new ParentRelation(RelationType.NESTED_CHILD, "dataset", "dataset", null))),
+		Map.entry("investigationparameter", List.of(
+			new ParentRelation(RelationType.NESTED_CHILD, "investigation", "investigation", null))),
+		Map.entry("sampleparameter", List.of(
+			new ParentRelation(RelationType.NESTED_CHILD, "investigation", "sample", null), // Must be first
+			new ParentRelation(RelationType.NESTED_CHILD, "dataset", "sample", null),
+			new ParentRelation(RelationType.NESTED_CHILD, "datafile", "sample", null))),
+		Map.entry("investigationuser", List.of(
+			new ParentRelation(RelationType.NESTED_CHILD, "investigation", "investigation", null),
+			new ParentRelation(RelationType.NESTED_CHILD, "dataset", "investigation", null),
+			new ParentRelation(RelationType.NESTED_CHILD, "datafile", "investigation", null))),
+		Map.entry("investigationinstrument", List.of(
+			new ParentRelation(RelationType.NESTED_CHILD, "investigation", "investigation", null),
+			new ParentRelation(RelationType.NESTED_CHILD, "dataset", "investigation", null),
+			new ParentRelation(RelationType.NESTED_CHILD, "datafile", "investigation", null))),
+		Map.entry("investigationfacilitycycle", List.of(
+			new ParentRelation(RelationType.NESTED_CHILD, "investigation", "investigation", null),
+			new ParentRelation(RelationType.NESTED_CHILD, "dataset", "investigation", null),
+			new ParentRelation(RelationType.NESTED_CHILD, "datafile", "investigation", null))),
 
 		// Grandchildren are entities that are related to one of the nested
 		// children, but do not have a direct reference to one of the indexed entities,
 		// and so must be updated by query - they also only affect a subset of the
 		// nested fields, rather than an entire nested object
-		relations.put("parametertype", Arrays.asList(
-				new ParentRelation(RelationType.NESTED_GRANDCHILD, "investigation", "investigationparameter",
-						ParameterType.docFields),
-				new ParentRelation(RelationType.NESTED_GRANDCHILD, "investigation", "sampleparameter",
-						ParameterType.docFields),
-				new ParentRelation(RelationType.NESTED_GRANDCHILD, "dataset", "datasetparameter",
-						ParameterType.docFields),
-				new ParentRelation(RelationType.NESTED_GRANDCHILD, "dataset", "sampleparameter",
-						ParameterType.docFields),
-				new ParentRelation(RelationType.NESTED_GRANDCHILD, "datafile", "datafileparameter",
-						ParameterType.docFields),
-				new ParentRelation(RelationType.NESTED_GRANDCHILD, "datafile", "sampleparameter",
-						ParameterType.docFields)));
-		relations.put("technique", Arrays.asList(
-				new ParentRelation(RelationType.NESTED_GRANDCHILD, "dataset", "datasettechnique",
-						Technique.docFields)));
-		relations.put("instrument", Arrays.asList(
-				new ParentRelation(RelationType.NESTED_GRANDCHILD, "investigation", "investigationinstrument",
-						User.docFields),
-				new ParentRelation(RelationType.NESTED_GRANDCHILD, "dataset", "investigationinstrument",
-						User.docFields),
-				new ParentRelation(RelationType.NESTED_GRANDCHILD, "datafile", "investigationinstrument",
-						User.docFields)));
+		Map.entry("parametertype", List.of(
+			new ParentRelation(RelationType.NESTED_GRANDCHILD, "investigation", "investigationparameter", ParameterType.docFields),
+			new ParentRelation(RelationType.NESTED_GRANDCHILD, "investigation", "sampleparameter", ParameterType.docFields),
+			new ParentRelation(RelationType.NESTED_GRANDCHILD, "dataset", "datasetparameter", ParameterType.docFields),
+			new ParentRelation(RelationType.NESTED_GRANDCHILD, "dataset", "sampleparameter", ParameterType.docFields),
+			new ParentRelation(RelationType.NESTED_GRANDCHILD, "datafile", "datafileparameter", ParameterType.docFields),
+			new ParentRelation(RelationType.NESTED_GRANDCHILD, "datafile", "sampleparameter", ParameterType.docFields))),
+		Map.entry("technique", List.of(
+			new ParentRelation(RelationType.NESTED_GRANDCHILD, "dataset", "datasettechnique", Technique.docFields))),
+		Map.entry("instrument", List.of(
+			new ParentRelation(RelationType.NESTED_GRANDCHILD, "investigation", "investigationinstrument", User.docFields),
+			new ParentRelation(RelationType.NESTED_GRANDCHILD, "dataset", "investigationinstrument", User.docFields),
+			new ParentRelation(RelationType.NESTED_GRANDCHILD, "datafile", "investigationinstrument", User.docFields)))
+	);
 
-		defaultFieldsMap.put("_all", new ArrayList<>());
-		defaultFieldsMap.put("datafile",
-				Arrays.asList("name", "description", "doi", "location", "datafileFormat.name", "sample.name"));
-		defaultFieldsMap.put("dataset",
-				Arrays.asList("name", "description", "doi", "sample.name", "sample.type.name", "type.name"));
-		defaultFieldsMap.put("investigation",
-				Arrays.asList("name", "visitId", "title", "summary", "doi", "facility.name"));
+	private static final Map<String, List<String>> defaultFieldsMap = Map.ofEntries(
+		Map.entry("_all", List.of()),
+		Map.entry("datafile", List.of("name", "description", "doi", "location", "datafileFormat.name", "sample.name")),
+		Map.entry("dataset", List.of("name", "description", "doi", "sample.name", "sample.type.name", "type.name")),
+		Map.entry("investigation", List.of("name", "visitId", "title", "summary", "doi", "facility.name"))
+	);
 
-		defaultFacetsMap.put("datafile", Arrays.asList("datafileFormat.name"));
-		defaultFacetsMap.put("dataset", Arrays.asList("type.name"));
-		defaultFacetsMap.put("investigation", Arrays.asList("type.name"));
-	}
+	private static final Map<String, List<String>> defaultFacetsMap = Map.ofEntries(
+		Map.entry("datafile", List.of("datafileFormat.name")),
+		Map.entry("dataset", List.of("type.name")),
+		Map.entry("investigation", List.of("type.name"))
+	);
+
+	private static final Set<String> indices = Set.of("datafile", "dataset", "investigation", "instrumentscientist");
 
 	public OpensearchApi(URI server) throws IcatException {
 		super(server);
@@ -501,11 +483,8 @@ public class OpensearchApi extends SearchApi {
 				sb.append(splitString[0] + ",");
 			} else if (splitString.length == 2) {
 				if (joinedFields != null && indices.contains(splitString[0].toLowerCase())) {
-					if (joinedFields.containsKey(splitString[0])) {
-						joinedFields.get(splitString[0]).add(splitString[1]);
-					} else {
-						joinedFields.putIfAbsent(splitString[0], new HashSet<>(Arrays.asList(splitString[1])));
-					}
+					joinedFields.putIfAbsent(splitString[0], new HashSet<>());
+					joinedFields.get(splitString[0]).add(splitString[1]);
 				} else {
 					sb.append(splitString[0].toLowerCase() + ",");
 				}
@@ -862,7 +841,7 @@ public class OpensearchApi extends SearchApi {
 			HttpPost httpPost = new HttpPost(uri);
 			if (addFields) {
 				for (JsonObject document : jsonArray.getValuesAs(JsonObject.class)) {
-					String documentId = document.getString("id");
+					String documentId = document.getJsonNumber("id").toString();
 					JsonObject queryObject = OpensearchQuery.buildTermQuery(entityName + ".id", documentId);
 					JsonObjectBuilder paramsBuilder = Json.createObjectBuilder();
 					JsonObjectBuilder scriptBuilder = Json.createObjectBuilder();
@@ -1000,7 +979,7 @@ public class OpensearchApi extends SearchApi {
 					relation.joinField + ".id not found in " + document);
 		}
 
-		String parentId = document.getString(relation.joinField + ".id");
+		String parentId = document.getJsonNumber(relation.joinField + ".id").toString();
 		String path = "/" + relation.parentName + "/_update/" + parentId;
 
 		// For nested 0:* relationships, wrap single documents in an array
@@ -1180,7 +1159,7 @@ public class OpensearchApi extends SearchApi {
 				if (document.containsKey("investigation.id")) {
 					// In principle a Dataset/Datafile could be created after InvestigationUser
 					// entities are attached to an Investigation, so need to check for those
-					bulk.investigationIds.add(document.getString("investigation.id"));
+					bulk.investigationIds.add(document.getJsonNumber("investigation.id").toString());
 				}
 				break;
 			case UPDATE:

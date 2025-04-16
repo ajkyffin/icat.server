@@ -250,7 +250,7 @@ public class ICAT {
 	@WebMethod
 	public List<String> getProperties(@WebParam(name = "sessionId") String sessionId) throws IcatException {
 		checkRoot(sessionId);
-		return beanManager.getProperties();
+		return propertyHandler.props();
 	}
 
 	@WebMethod()

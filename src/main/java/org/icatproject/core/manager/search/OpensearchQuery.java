@@ -695,7 +695,7 @@ public class OpensearchQuery {
 		JsonArray hits = postResponse.getJsonObject("hits").getJsonArray("hits");
 		JsonArrayBuilder instrumentIdsBuilder = Json.createArrayBuilder();
 		for (JsonObject hit : hits.getValuesAs(JsonObject.class)) {
-			String instrumentId = hit.getJsonObject("_source").getString("instrument.id");
+			String instrumentId = hit.getJsonObject("_source").getJsonNumber("instrument.id").toString();
 			instrumentIdsBuilder.add(instrumentId);
 		}
 		JsonObject instrumentQuery = buildTermsQuery("investigationinstrument.instrument.id",

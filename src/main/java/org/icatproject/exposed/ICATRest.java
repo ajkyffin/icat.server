@@ -2,14 +2,12 @@ package org.icatproject.exposed;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
-import java.io.IOException;
 import java.io.InputStream;
 import java.io.StringReader;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.math.BigDecimal;
 import java.math.BigInteger;
-import java.nio.charset.StandardCharsets;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
@@ -40,9 +38,7 @@ import jakarta.json.stream.JsonParser;
 import jakarta.json.stream.JsonParser.Event;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
-import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
-import jakarta.servlet.http.Part;
 import jakarta.ws.rs.Consumes;
 import jakarta.ws.rs.DELETE;
 import jakarta.ws.rs.FormParam;
@@ -637,36 +633,16 @@ public class ICATRest {
 	@POST
 	@Path("port")
 	@Consumes(MediaType.MULTIPART_FORM_DATA)
-	public void importData(@Context HttpServletRequest request) throws IcatException {
-
-		String jsonString = null;
-		String name = null;
-
-		// Parse the request
-		try {
-			for (Part part : request.getParts()) {
-				String fieldName = part.getName();
-				InputStream stream = part.getInputStream();
-				if (part.getSubmittedFileName() == null) {
-					String value = new String(stream.readAllBytes(), StandardCharsets.UTF_8);
-					if (fieldName.equals("json")) {
-						jsonString = value;
-					} else {
-						throw new IcatException(IcatExceptionType.BAD_PARAMETER,
-								"Form field '" + fieldName + "' is not recognised");
-					}
-				} else {
-					if (name == null) {
-						name = part.getSubmittedFileName();
-					}
-					porter.importData(jsonString, stream, entityManager, request.getRemoteAddr());
-				}
-			}
-		} catch (IOException e) {
-			throw new IcatException(IcatExceptionType.INTERNAL, e.getClass() + " " + e.getMessage());
-		} catch (ServletException e) {
-			throw new IcatException(IcatExceptionType.BAD_PARAMETER, "Multipart content expected");
+	public void importData(@Context HttpServletRequest request, @FormParam("json") String jsonString, @FormParam("file") InputStream stream) throws IcatException {
+		if (jsonString == null) {
+			throw new IcatException(IcatExceptionType.BAD_PARAMETER, "json must not be null");
 		}
+
+		if (stream == null) {
+			throw new IcatException(IcatExceptionType.BAD_PARAMETER, "file must not be null");
+		}
+
+		porter.importData(jsonString, stream, entityManager, request.getRemoteAddr());
 	}
 
 	@PostConstruct

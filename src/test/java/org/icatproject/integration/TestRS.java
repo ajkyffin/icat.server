@@ -1373,7 +1373,7 @@ public class TestRS {
 
 		JsonArray array;
 
-		array = search(session, "SELECT ds.name, inv.name FROM Dataset ds, ds.investigation inv LIMIT 0,20", 5);
+		array = search(session, "SELECT ds.name, inv.name FROM Dataset ds JOIN ds.investigation inv LIMIT 0,20", 5);
 		Set<String> dsn = new HashSet<>();
 		for (JsonValue r : array) {
 			JsonArray array2 = (JsonArray) r;
@@ -1382,8 +1382,7 @@ public class TestRS {
 		}
 		assertEquals(new HashSet<String>(Arrays.asList("ds1", "ds2", "ds3", "ds4")), dsn);
 
-		array = search(session, "SELECT DISTINCT ds.name, inv.name FROM Dataset ds, ds.investigation inv LIMIT 0,20",
-				4);
+		array = search(session, "SELECT DISTINCT ds.name, inv.name FROM Dataset ds JOIN ds.investigation inv LIMIT 0,20", 4);
 		dsn = new HashSet<>();
 		for (JsonValue r : array) {
 			JsonArray array2 = (JsonArray) r;
@@ -1435,7 +1434,7 @@ public class TestRS {
 
 		String query = "SELECT inv FROM Investigation inv JOIN inv.shifts AS s "
 				+ "WHERE s.instrument.pid = 'ig:0815' AND s.comment = 'beamtime' "
-				+ "AND s.startDate <= '2014-01-01 12:00:00' AND s.endDate >= '2014-01-01 12:00:00'";
+				+ "AND s.startDate <= {ts 2014-01-01 12:00:00} AND s.endDate >= {ts 2014-01-01 12:00:00}";
 		JsonObject inv = search(session, query, 1).getJsonObject(0).getJsonObject("Investigation");
 		assertEquals("expt1", inv.getString("name"));
 		assertEquals("zero", inv.getString("visitId"));
@@ -2012,7 +2011,7 @@ public class TestRS {
 		}
 		ids = session.write(baos.toString());
 		assertEquals(1, ids.size());
-		array = search(session, "SELECT f.name, it.name FROM Facility f, f.investigationTypes it WHERE f.id = "
+		array = search(session, "SELECT f.name, it.name FROM Facility f JOIN f.investigationTypes it WHERE f.id = "
 				+ ids.get(0) + " ORDER BY it.name", 2);
 		assertEquals("Pinot Grigio", array.getJsonArray(0).getString(0));
 		assertEquals("Pinot Grigio", array.getJsonArray(1).getString(0));

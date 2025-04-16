@@ -53,7 +53,7 @@ public abstract class EntityBaseBean implements HasEntityId, Serializable {
 	private long descendantCount = 1L;
 
 	@Id
-	@GeneratedValue(strategy = GenerationType.SEQUENCE)
+	@GeneratedValue(strategy = GenerationType.IDENTITY)
 	protected Long id;
 
 	@Column(name = "MOD_ID", nullable = false)

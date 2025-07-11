@@ -1,4 +1,4 @@
-package org.icatproject.core.parser;
+package org.icatproject.core.newparser;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -15,7 +15,7 @@ public class Tokenizer {
 	private final static Pattern tsRegExp = Pattern
 			.compile("\\{\\s*ts\\s+(\\d{4}-\\d{2}-\\d{2})\\s+(\\d{2}:\\d{2}:\\d{2})\\s*\\}");
 
-	private final static Set<String> keyWords = Set.of(
+	private static final Set<String> KEYWORDS = Set.of(
 		"ABS", "ALL", "AND", "ANY", "AS", "ASC", "AVG", "BETWEEN", "BIT_LENGTH", "BOTH", "BY", "CASE", "CEILING",
 		"CHAR_LENGTH", "CHARACTER_LENGTH", "CLASS", "COALESCE", "CONCAT", "COUNT", "CURRENT_DATE", "CURRENT_TIME",
 		"CURRENT_TIMESTAMP", "DELETE", "DESC", "DISTINCT", "ELSE", "EMPTY", "END", "ENTRY", "ESCAPE", "EXISTS", "EXP",
@@ -24,9 +24,7 @@ public class Tokenizer {
 		"MEMBER", "MIN", "MOD", "NEW", "NOT", "NULL", "NULLS", "NULLIF", "OBJECT", "OF", "ON", "OR", "ORDER", "OUTER",
 		"POSITION", "POWER", "REPLACE", "RIGHT", "ROUND", "SELECT", "SET", "SIGN", "SIZE", "SOME", "SQRT",
 		"SUBSTRING", "SUM", "THEN", "TRAILING", "TREAT", "TRIM", "TRUE", "TYPE", "UNKNOWN", "UPDATE", "UPPER",
-		"VALUE", "WHEN", "WHERE");
-
-//"INCLUDE", "LIMIT", "TIMESTAMP"
+		"VALUE", "WHEN", "WHERE", "INCLUDE", "LIMIT");
 
 	public static List<Token> getTokens(String input) throws LexerException {
 		List<Token> tokens = new ArrayList<Token>();
@@ -130,7 +128,7 @@ public class Tokenizer {
 				if (!Character.isLetterOrDigit(ch) && ch != '_' && ch != '.' && ch != '$') {
 					String name = input.substring(start, i);
 					String nameUp = name.toUpperCase();
-					if (keyWords.contains(nameUp)) {
+					if (KEYWORDS.contains(nameUp)) {
 						tokens.add(new Token(Token.Type.valueOf(nameUp), nameUp));
 					} else if (nameUp.equals("LIKE")) {
 						tokens.add(new Token(Token.Type.COMPOP, "LIKE"));

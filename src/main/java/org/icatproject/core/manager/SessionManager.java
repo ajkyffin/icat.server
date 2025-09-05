@@ -1,12 +1,10 @@
 package org.icatproject.core.manager;
 
 import jakarta.annotation.PostConstruct;
+import jakarta.annotation.PreDestroy;
 import jakarta.annotation.Resource;
-import jakarta.ejb.EJB;
-import jakarta.ejb.Schedule;
-import jakarta.ejb.Singleton;
-import jakarta.ejb.TransactionManagement;
-import jakarta.ejb.TransactionManagementType;
+import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.inject.Inject;
 import jakarta.json.Json;
 import jakarta.json.stream.JsonGenerator;
 import jakarta.persistence.EntityManager;
@@ -17,6 +15,9 @@ import jakarta.transaction.UserTransaction;
 
 import java.io.ByteArrayOutputStream;
 import java.util.Set;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 
 import org.icatproject.core.IcatException;
 import org.icatproject.core.IcatException.IcatExceptionType;
@@ -25,13 +26,12 @@ import org.icatproject.core.manager.PropertyHandler.CallType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-@Singleton
-@TransactionManagement(TransactionManagementType.BEAN)
+@ApplicationScoped
 public class SessionManager {
 
 	private static final Logger logger = LoggerFactory.getLogger(SessionManager.class);
 
-	@EJB
+	@Inject
 	Transmitter transmitter;
 
 	@Resource
@@ -42,7 +42,7 @@ public class SessionManager {
 	@PersistenceContext(unitName = "session")
 	EntityManager sessionEntityManager;
 
-	@EJB
+	@Inject
 	PropertyHandler propertyHandler;
 
 	private boolean log;
@@ -54,16 +54,27 @@ public class SessionManager {
 		logRequests = propertyHandler.getLogSet();
 		log = !logRequests.isEmpty();
 		lifetimeMinutes = propertyHandler.getLifetimeMinutes();
+
+		executorService.scheduleAtFixedRate(() -> removeExpiredSessions(), 0, 1, TimeUnit.HOURS);
 	}
 
+	@PreDestroy
+	void blarg() throws InterruptedException {
+		executorService.shutdown();
+		executorService.awaitTermination(10, TimeUnit.SECONDS);
+	}
+
+	ScheduledExecutorService executorService = Executors.newSingleThreadScheduledExecutor();
+
 	// Run every hour
-	@Schedule(hour = "*")
-	public void removeExpiredSessions() {
+	//@Schedule(hour = "*")
+	void removeExpiredSessions() {
+		logger.debug("Removing expired sessions...");
 		try {
 			userTransaction.begin();
 			int n = sessionEntityManager.createNamedQuery(Session.DELETE_EXPIRED).executeUpdate();
 			userTransaction.commit();
-			logger.debug(n + " sessions were removed");
+			logger.debug("{} expired sessions were removed.", n);
 		} catch (Exception e) {
 			logger.error("Error removing expired sessions", e);
 		}

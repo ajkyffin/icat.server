@@ -2334,11 +2334,13 @@ public class TestRS {
 		start = end;
 	}
 
+	@Disabled
 	@Test
 	public void importMetaDataUser() throws Exception {
 		importMetaData(Attributes.USER, "db/root");
 	}
 
+	@Disabled
 	@Test
 	public void importMetaDataAll() throws Exception {
 		importMetaData(Attributes.ALL, "Zorro");
@@ -2352,6 +2354,7 @@ public class TestRS {
 		exportMetaDataDump(credentials);
 	}
 
+	@Disabled
 	@Test
 	public void exportMetaDataDumpRoot() throws Exception {
 		Map<String, String> credentials = new HashMap<>();

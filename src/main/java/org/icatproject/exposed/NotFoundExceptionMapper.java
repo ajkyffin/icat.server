@@ -20,7 +20,7 @@ public class NotFoundExceptionMapper implements ExceptionMapper<NotFoundExceptio
 
 	@Override
 	public Response toResponse(NotFoundException e) {
-		logger.info("Processing: " + e.getClass() + " " + e.getMessage());
+		logger.info("Processing: " + e.getClass() + " " + e.getMessage(), e);
 		ByteArrayOutputStream baos = new ByteArrayOutputStream();
 		JsonGenerator gen = Json.createGenerator(baos);
 		gen.writeStartObject().write("code", IcatExceptionType.NOT_IMPLEMENTED.name())

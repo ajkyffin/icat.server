@@ -2,7 +2,6 @@ package org.icatproject.core.manager;
 
 import jakarta.annotation.PostConstruct;
 import jakarta.annotation.PreDestroy;
-import jakarta.annotation.Resource;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.json.Json;
@@ -34,7 +33,7 @@ public class SessionManager {
 	@Inject
 	Transmitter transmitter;
 
-	@Resource
+	@Inject
 	UserTransaction userTransaction;
 
 	// This EntityManager is for a different persistence context from the rest of icat.server that only contains the
@@ -59,9 +58,13 @@ public class SessionManager {
 	}
 
 	@PreDestroy
-	void blarg() throws InterruptedException {
+	void exit() {
 		executorService.shutdown();
-		executorService.awaitTermination(10, TimeUnit.SECONDS);
+		try {
+			executorService.awaitTermination(10, TimeUnit.SECONDS);
+		} catch (InterruptedException e) {
+			Thread.currentThread().interrupt();
+		}
 	}
 
 	ScheduledExecutorService executorService = Executors.newSingleThreadScheduledExecutor();

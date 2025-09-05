@@ -68,7 +68,7 @@ public class WSession {
 
 	private ContainerType containerType;
 
-	private static String[] suffices = new String[] { "ICATService/ICAT?wsdl", "icat/ICAT?wsdl" };
+	private static String[] suffices = new String[] { "icat/ICATService?wsdl", "ICATService/ICAT?wsdl", "icat/ICAT?wsdl" };
 
 	public WSession() throws Exception {
 		String url = System.getProperty("serverUrl");
@@ -80,11 +80,14 @@ public class WSession {
 			try {
 				icatService = new ICATService(icatUrl, new QName("http://icatproject.org", "ICATService"));
 			} catch (WebServiceException e) {
-				Throwable cause = e.getCause();
-				if (cause != null && cause.getMessage().contains("security")) {
-					throw e;
-				}
+				System.out.println("Caught WebServiceException");
+				continue;
+			} catch (Exception e) {
+				System.out.println("Caught Exception");
+				continue;
 			}
+
+			break;
 		}
 		if (icatService == null) {
 			throw new Exception("Unable to connect to: " + url);
